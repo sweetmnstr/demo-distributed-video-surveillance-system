@@ -1,7 +1,4 @@
-export interface BackoffConfig {
-  readonly baseMs: number;
-  readonly capMs: number;
-}
-
-export const nextDelayMs = (attempt: number, config: BackoffConfig): number =>
-  Math.min(config.capMs, config.baseMs * 2 ** attempt);
+// Backoff now lives in @vss/shared so Server A's reconnect controller and the
+// camera-sim supervisor share one implementation (DRY).
+export { nextDelayMs } from '@vss/shared';
+export type { BackoffConfig } from '@vss/shared';
