@@ -1,0 +1,17 @@
+{
+  "name": "@vss/camera-sim",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "jest",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@vss/shared": "*",
+    "ffmpeg-static": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/ffmpeg-static": "^3.0.3"
+  }
+}
