@@ -21,3 +21,18 @@ export const LoginRequest = z.object({
   password: z.string().min(1),
 });
 export type LoginRequest = z.infer<typeof LoginRequest>;
+
+export const InterServerCommand = z.object({
+  type: z.literal('exec'),
+  requestId: z.string().min(1),
+  command: CommandSchema,
+});
+export type InterServerCommand = z.infer<typeof InterServerCommand>;
+
+export const InterServerResult = z.object({
+  type: z.literal('result'),
+  requestId: z.string().min(1),
+  ok: z.boolean(),
+  text: z.string(),
+});
+export type InterServerResult = z.infer<typeof InterServerResult>;

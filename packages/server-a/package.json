@@ -1,0 +1,19 @@
+{
+  "name": "@vss/server-a",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "jest",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@vss/shared": "*",
+    "ws": "^8.18.0",
+    "ioredis": "^5.4.1",
+    "ffmpeg-static": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.10"
+  }
+}

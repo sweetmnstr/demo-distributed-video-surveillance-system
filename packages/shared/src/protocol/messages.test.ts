@@ -1,4 +1,4 @@
-import { ControlClientMessage, ControlServerMessage, LoginRequest } from './messages';
+import { ControlClientMessage, ControlServerMessage, LoginRequest, InterServerCommand, InterServerResult } from './messages';
 
 describe('control protocol schemas', () => {
   it('accepts a plaintext command message', () => {
@@ -33,5 +33,19 @@ describe('control protocol schemas', () => {
   });
   it('rejects a LoginRequest with empty login', () => {
     expect(() => LoginRequest.parse({ login: '', password: 'secret' })).toThrow();
+  });
+});
+
+describe('A<->B inter-server protocol', () => {
+  it('accepts an exec command from Server B', () => {
+    expect(InterServerCommand.parse({ type: 'exec', requestId: 'r1', command: 'STOP_VIDEO' }))
+      .toEqual({ type: 'exec', requestId: 'r1', command: 'STOP_VIDEO' });
+  });
+  it('rejects an unknown command in an exec message', () => {
+    expect(() => InterServerCommand.parse({ type: 'exec', requestId: 'r1', command: 'NOPE' })).toThrow();
+  });
+  it('accepts a result message from Server A', () => {
+    expect(InterServerResult.parse({ type: 'result', requestId: 'r1', ok: true, text: 'done' }))
+      .toEqual({ type: 'result', requestId: 'r1', ok: true, text: 'done' });
   });
 });
