@@ -1,0 +1,23 @@
+{
+  "name": "@vss/server-b",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "jest",
+    "start": "node dist/main.js",
+    "seed:users": "node scripts/seed-users.mjs"
+  },
+  "dependencies": {
+    "@vss/shared": "*",
+    "fastify": "^4.28.0",
+    "ws": "^8.18.0",
+    "ioredis": "^5.4.1",
+    "bcryptjs": "^2.4.3",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.10",
+    "@types/bcryptjs": "^2.4.6"
+  }
+}
