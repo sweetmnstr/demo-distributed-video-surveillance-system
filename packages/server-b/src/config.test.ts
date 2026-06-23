@@ -28,3 +28,18 @@ describe('loadServerBConfig', () => {
     expect(() => loadServerBConfig({ ...validEnv, HTTP_PORT: 'abc' })).toThrow();
   });
 });
+
+describe('loadServerBConfig — cipher selection', () => {
+  it('defaults cipherImpl to node when CIPHER_IMPL is absent', () => {
+    expect(loadServerBConfig(validEnv).cipherImpl).toBe('node');
+  });
+  it('accepts an explicit native selection', () => {
+    expect(loadServerBConfig({ ...validEnv, CIPHER_IMPL: 'native' }).cipherImpl).toBe('native');
+  });
+  it('accepts an explicit tpm selection', () => {
+    expect(loadServerBConfig({ ...validEnv, CIPHER_IMPL: 'tpm' }).cipherImpl).toBe('tpm');
+  });
+  it('rejects an unknown cipher implementation', () => {
+    expect(() => loadServerBConfig({ ...validEnv, CIPHER_IMPL: 'rot13' })).toThrow();
+  });
+});

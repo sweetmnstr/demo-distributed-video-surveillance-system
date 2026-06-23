@@ -12,7 +12,7 @@ export interface ControlSocketHandlers {
 export const openControlSocket = (
   token: string,
   handlers: ControlSocketHandlers,
-): { send(command: Command): void; close(): void } => {
+): { send(command: Command): void; sendEncrypted(payloadBase64: string): void; close(): void } => {
   const socket = new WebSocket(WS_URL);
   socket.addEventListener('open', () => socket.send(JSON.stringify(authMessage(token))));
   socket.addEventListener('message', (event) => {
@@ -25,6 +25,7 @@ export const openControlSocket = (
   socket.addEventListener('error', () => handlers.onConnectionError('control connection error'));
   return {
     send: (command) => socket.send(JSON.stringify(commandMessage(command))),
+    sendEncrypted: (payloadBase64) => socket.send(JSON.stringify({ type: 'encrypted', payload: payloadBase64 })),
     close: () => socket.close(),
   };
 };

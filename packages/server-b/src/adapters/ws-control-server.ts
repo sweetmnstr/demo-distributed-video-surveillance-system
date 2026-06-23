@@ -1,17 +1,30 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import { ControlClientMessage, ControlServerMessage, Session } from '@vss/shared';
+import { ControlClientMessage, ControlServerMessage, Session, CommandCipher, Command } from '@vss/shared';
 import { authenticateConnection, AuthenticateDeps } from '../use-cases/authenticate-connection';
 import { processCommand, ProcessCommandDeps } from '../use-cases/process-command';
 import { logout, LogoutDeps } from '../use-cases/logout';
+import { decryptCommand } from '../use-cases/decrypt-command';
 
 export interface ControlServerDeps {
   readonly wss: WebSocketServer;
   readonly auth: AuthenticateDeps;
   readonly process: ProcessCommandDeps;
   readonly logoutDeps: LogoutDeps;
+  readonly cipher: CommandCipher;
 }
 
 const send = (socket: WebSocket, message: ControlServerMessage): void => socket.send(JSON.stringify(message));
+
+const routeCommand = async (command: Command, session: Session, socket: WebSocket, deps: ControlServerDeps): Promise<void> => {
+  if (command === 'LOGOUT') {
+    const reply = await logout(session, deps.logoutDeps);
+    send(socket, { type: 'response', ok: reply.ok, text: reply.text });
+    socket.close(1000);
+    return;
+  }
+  const reply = await processCommand(command, session, deps.process);
+  send(socket, { type: 'response', ok: reply.ok, text: reply.text });
+};
 
 // Client control WS: first message must authenticate; subsequent messages are
 // commands routed to processCommand (or logout for LOGOUT).
@@ -39,20 +52,19 @@ export const startControlServer = (deps: ControlServerDeps): void => {
         if (!session) return send(socket, { type: 'error', text: 'not authenticated' });
 
         if (msg.type === 'command') {
-          // LOGOUT is intercepted here before processCommand because it needs to
+          // LOGOUT is intercepted inside routeCommand because it needs to
           // close the socket after revoking the session. canRun() grants LOGOUT
           // to all roles, so bypassing authorizeCommand is safe.
-          if (msg.command === 'LOGOUT') {
-            const reply = await logout(session, deps.logoutDeps);
-            send(socket, { type: 'response', ok: reply.ok, text: reply.text });
-            socket.close(1000);
-            return;
-          }
-          const reply = await processCommand(msg.command, session, deps.process);
-          return send(socket, { type: 'response', ok: reply.ok, text: reply.text });
+          return routeCommand(msg.command, session, socket, deps);
         }
-        // 'encrypted' messages are handled in plan 07 (Bonus B); reject for now.
-        return send(socket, { type: 'error', text: 'encrypted commands not enabled' });
+        if (msg.type === 'encrypted') {
+          const decrypted = await decryptCommand(msg.payload, deps.cipher);
+          if (decrypted.kind === 'err') return send(socket, { type: 'error', text: decrypted.error });
+          return routeCommand(decrypted.value, session, socket, deps);
+        }
+        // TypeScript exhaustiveness guard — compile error if a new discriminant is added without a handler
+        const _never: never = msg;
+        void _never;
       } catch {
         send(socket, { type: 'error', text: 'internal error' });
         socket.close(1011);

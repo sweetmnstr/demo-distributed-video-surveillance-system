@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { WebSocketServer } from 'ws';
+import type { CommandCipher } from '@vss/shared';
 import { loadServerBConfig } from './config';
 import { createJsonUserRepo } from './adapters/json-user-repo';
 import { createBcryptHasher } from './adapters/bcrypt-hasher';
@@ -10,6 +12,15 @@ import { createUuidIdGenerator } from './adapters/uuid-id-generator';
 import { createWsCommandForwarder } from './adapters/ws-command-forwarder';
 import { buildHttpServer } from './adapters/fastify-http';
 import { startControlServer } from './adapters/ws-control-server';
+import { createNodeCryptoCipher } from './crypto/node-cipher';
+
+const buildCipher = (cfg: { cipherImpl: 'node' | 'native' | 'tpm'; privateKeyPath: string; publicKeyPath: string }): CommandCipher => {
+  const privatePem = readFileSync(cfg.privateKeyPath, 'utf8');
+  const publicPem = readFileSync(cfg.publicKeyPath, 'utf8');
+  if (cfg.cipherImpl === 'node') return createNodeCryptoCipher(privatePem, publicPem);
+  // 'native' (plan 08) and 'tpm' (plan 09) are wired in later bonus plans.
+  throw new Error(`cipher implementation '${cfg.cipherImpl}' is not available yet`);
+};
 
 const main = async (): Promise<void> => {
   const cfg = loadServerBConfig(process.env);
@@ -38,6 +49,7 @@ const main = async (): Promise<void> => {
     auth: { verifier, sessions },
     process: { audit, forwarder },
     logoutDeps: { sessions, audit },
+    cipher: buildCipher(cfg),
   });
 };
 
