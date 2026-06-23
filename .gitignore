@@ -146,3 +146,7 @@ docs
 .claude
 CLAUDE.md
 TASK.md
+
+# Generated RSA keys and runtime command log (never commit)
+config/keys/
+config/commands.log
