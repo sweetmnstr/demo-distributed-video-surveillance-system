@@ -1,7 +1,7 @@
 {
   "name": "video-surveillance-system",
   "private": true,
-  "workspaces": ["packages/*", "apps/*"],
+  "workspaces": ["packages/*", "apps/*", "e2e"],
   "engines": { "node": ">=20" },
   "scripts": {
     "test": "npm run test --workspaces --if-present",
