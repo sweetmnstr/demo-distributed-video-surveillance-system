@@ -3,7 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "main": "dist/index.js",
+  "module": "dist/esm/index.js",
   "types": "dist/index.d.ts",
-  "scripts": { "build": "tsc -p tsconfig.json", "test": "jest" },
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": { "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json", "test": "jest" },
   "dependencies": { "jose": "^5.6.0", "zod": "^3.23.0" }
 }
