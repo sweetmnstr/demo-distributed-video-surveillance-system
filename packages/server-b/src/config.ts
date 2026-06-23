@@ -13,6 +13,7 @@ const Schema = z.object({
   HMAC_SECRET: z.string().min(1),
   REDIS_URL: z.string().min(1),
   JWT_TTL_SECONDS: numeric,
+  CIPHER_IMPL: z.enum(['node', 'native', 'tpm']).default('node'),
 });
 
 export interface ServerBConfig {
@@ -26,6 +27,7 @@ export interface ServerBConfig {
   readonly hmacSecret: string;
   readonly redisUrl: string;
   readonly jwtTtlSeconds: number;
+  readonly cipherImpl: 'node' | 'native' | 'tpm';
 }
 
 export const loadServerBConfig = (env: Record<string, string | undefined>): ServerBConfig => {
@@ -41,5 +43,6 @@ export const loadServerBConfig = (env: Record<string, string | undefined>): Serv
     hmacSecret: parsed.HMAC_SECRET,
     redisUrl: parsed.REDIS_URL,
     jwtTtlSeconds: parsed.JWT_TTL_SECONDS,
+    cipherImpl: parsed.CIPHER_IMPL,
   };
 };
