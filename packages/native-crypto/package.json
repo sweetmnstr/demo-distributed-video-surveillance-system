@@ -1,0 +1,21 @@
+{
+  "name": "@vss/native-crypto",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "build": "tsc -p tsconfig.json",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@vss/shared": "*",
+    "bindings": "^1.5.0",
+    "node-addon-api": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/bindings": "^1.5.5",
+    "node-gyp": "^10.2.0"
+  }
+}

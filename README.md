@@ -54,3 +54,14 @@ npm run start --workspace @vss/server-a
 npm run start --workspace @vss/server-b
 npm run dev   --workspace @vss/web-client
 ```
+
+## Native crypto addon (Bonus C)
+
+`@vss/native-crypto` is a C++ N-API addon (RSA-OAEP via Node's bundled OpenSSL).
+Building it requires a C/C++ toolchain:
+
+- Windows x64: Visual Studio Build Tools (MSVC) + Python 3.
+- Linux/macOS: a working `gcc`/`clang` and `make`.
+
+Enable it with `CIPHER_IMPL=native`. The addon generates its own key pair at
+startup; `/publicKey` then serves the addon's public key.

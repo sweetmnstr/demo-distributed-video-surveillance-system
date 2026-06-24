@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { WebSocketServer } from 'ws';
 import type { CommandCipher } from '@vss/shared';
+import { loadNativeAddon, createNativeCryptoCipher } from '@vss/native-crypto';
 import { loadServerBConfig } from './config';
 import { createJsonUserRepo } from './adapters/json-user-repo';
 import { createBcryptHasher } from './adapters/bcrypt-hasher';
@@ -14,11 +15,18 @@ import { buildHttpServer } from './adapters/fastify-http';
 import { startControlServer } from './adapters/ws-control-server';
 import { createNodeCryptoCipher } from './crypto/node-cipher';
 
-const buildCipher = (cfg: { cipherImpl: 'node' | 'native' | 'tpm'; privateKeyPath: string; publicKeyPath: string }): CommandCipher => {
-  const privatePem = readFileSync(cfg.privateKeyPath, 'utf8');
-  const publicPem = readFileSync(cfg.publicKeyPath, 'utf8');
-  if (cfg.cipherImpl === 'node') return createNodeCryptoCipher(privatePem, publicPem);
-  // 'native' (plan 08) and 'tpm' (plan 09) are wired in later bonus plans.
+const buildCipher = async (cfg: { cipherImpl: 'node' | 'native' | 'tpm'; privateKeyPath: string; publicKeyPath: string }): Promise<CommandCipher> => {
+  if (cfg.cipherImpl === 'node') {
+    const privatePem = readFileSync(cfg.privateKeyPath, 'utf8');
+    const publicPem = readFileSync(cfg.publicKeyPath, 'utf8');
+    return createNodeCryptoCipher(privatePem, publicPem);
+  }
+  if (cfg.cipherImpl === 'native') {
+    const addon = loadNativeAddon();
+    await addon.generateKeyPair();
+    return createNativeCryptoCipher(addon);
+  }
+  // 'tpm' is wired in plan 09.
   throw new Error(`cipher implementation '${cfg.cipherImpl}' is not available yet`);
 };
 
@@ -36,10 +44,12 @@ const main = async (): Promise<void> => {
   const interServerWss = new WebSocketServer({ port: cfg.interServerWsPort });
   const forwarder = createWsCommandForwarder({ wss: interServerWss });
 
+  const cipher = await buildCipher(cfg);
+
   const http = buildHttpServer({
     loginDeps: { users, hasher, issuer, sessions, ids, ttlSeconds: cfg.jwtTtlSeconds },
     verifier,
-    publicKeyPath: cfg.publicKeyPath,
+    cipher,
   });
   await http.listen({ port: cfg.httpPort, host: '0.0.0.0' });
 
@@ -49,7 +59,7 @@ const main = async (): Promise<void> => {
     auth: { verifier, sessions },
     process: { audit, forwarder },
     logoutDeps: { sessions, audit },
-    cipher: buildCipher(cfg),
+    cipher,
   });
 };
 

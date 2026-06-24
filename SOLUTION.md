@@ -34,3 +34,10 @@ Playwright E2E against the compose stack.
 - Bonus D real TPM (Windows PCP/CNG) does not run in a Linux container; container
   delivery uses software emulation behind the `CommandCipher` port.
 - A↔B commands are rejected (not queued) while the inter-server channel is down.
+
+## Bonus C — native addon
+RSA-OAEP runs in C++ via `Napi::AsyncWorker` (off the event loop) using Node's
+bundled OpenSSL headers — no external OpenSSL install. The JS wrapper is unit
+-tested to 100% with a mock addon; the compiled binary is verified by a round
+-trip integration test. C++-level unit tests were left optional given the small
+surface and the integration coverage.

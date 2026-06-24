@@ -1,18 +1,16 @@
 import Fastify, { FastifyInstance } from 'fastify';
-import { readFileSync } from 'node:fs';
-import { LoginRequest } from '@vss/shared';
+import { CommandCipher, LoginRequest } from '@vss/shared';
 import { loginUser, LoginUserDeps } from '../use-cases/login-user';
 import { TokenVerifier } from '../ports/token-verifier';
 
 export interface HttpDeps {
   readonly loginDeps: LoginUserDeps;
   readonly verifier: TokenVerifier;
-  readonly publicKeyPath: string;
+  readonly cipher: CommandCipher;
 }
 
 export const buildHttpServer = (deps: HttpDeps): FastifyInstance => {
   const app = Fastify({ logger: false });
-  const publicKeyPem = readFileSync(deps.publicKeyPath, 'utf8');
 
   app.post('/auth/login', async (request, reply) => {
     const body = LoginRequest.safeParse(request.body);
@@ -33,7 +31,7 @@ export const buildHttpServer = (deps: HttpDeps): FastifyInstance => {
     return reply.send({ sub: verified.value.sub, role: verified.value.role });
   });
 
-  app.get('/publicKey', async (_request, reply) => reply.type('text/plain').send(publicKeyPem));
+  app.get('/publicKey', async (_request, reply) => reply.type('text/plain').send(await deps.cipher.getPublicKey()));
 
   return app;
 };
