@@ -1,5 +1,4 @@
-import { appendFile } from 'node:fs/promises';
-import { existsSync, readFileSync } from 'node:fs';
+import { appendFile, readFile } from 'node:fs/promises';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Result, ok, err, isOk, isErr } from '../result/result';
 
@@ -24,12 +23,17 @@ const computeHmac = (
     .update(JSON.stringify([parts.timestamp, parts.user, parts.message, parts.prevHash]))
     .digest('hex');
 
-const readEntries = (file: string): Result<LogEntry[], string> => {
-  if (!existsSync(file)) return ok([]);
-  const raw = readFileSync(file, 'utf8').trimEnd();
-  if (raw.length === 0) return ok([]);
+const readEntries = async (file: string): Promise<Result<LogEntry[], string>> => {
+  let raw: string;
   try {
-    return ok(raw.split('\n').map((line) => JSON.parse(line) as LogEntry));
+    raw = await readFile(file, 'utf8');
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return ok([]);
+    throw e;
+  }
+  if (raw.trimEnd().length === 0) return ok([]);
+  try {
+    return ok(raw.trimEnd().split('\n').map((line) => JSON.parse(line) as LogEntry));
   } catch {
     return err('log file contains invalid JSON');
   }
@@ -42,7 +46,7 @@ export const appendEntry = async (
   secret: string,
   input: LogInput,
 ): Promise<Result<void, string>> => {
-  const entriesResult = readEntries(file);
+  const entriesResult = await readEntries(file);
   if (isErr(entriesResult)) return entriesResult;
   const entries = entriesResult.value;
   const last = entries[entries.length - 1];
@@ -58,8 +62,8 @@ export const appendEntry = async (
   }
 };
 
-export const verifyChain = (file: string, secret: string): Result<number, string> => {
-  const entriesResult = readEntries(file);
+export const verifyChain = async (file: string, secret: string): Promise<Result<number, string>> => {
+  const entriesResult = await readEntries(file);
   if (isErr(entriesResult)) return entriesResult;
   const entries = entriesResult.value;
   let prevHash = GENESIS;

@@ -1,8 +1,8 @@
 import bcryptjs from 'bcryptjs';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-const { hashSync } = bcryptjs;
+const { hash } = bcryptjs;
 
 // Demo users for the prototype. Passwords are intentionally simple and are
 // documented in the README; only their bcrypt hashes are persisted.
@@ -13,12 +13,14 @@ const SEED = [
 ];
 
 const outPath = process.env.USERS_PATH ?? 'config/users.json';
-const users = SEED.map(({ login, password, role }) => ({
-  login,
-  passwordHash: hashSync(password, 10),
-  role,
-}));
+const users = await Promise.all(
+  SEED.map(async ({ login, password, role }) => ({
+    login,
+    passwordHash: await hash(password, 10),
+    role,
+  })),
+);
 
-mkdirSync(dirname(outPath), { recursive: true });
-writeFileSync(outPath, JSON.stringify(users, null, 2) + '\n', 'utf8');
+await mkdir(dirname(outPath), { recursive: true });
+await writeFile(outPath, JSON.stringify(users, null, 2) + '\n', 'utf8');
 console.log(`Wrote ${users.length} users to ${outPath}`);

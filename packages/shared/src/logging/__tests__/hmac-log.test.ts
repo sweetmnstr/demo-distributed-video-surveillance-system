@@ -12,6 +12,7 @@ const mockAppendFile = jest.fn(
 );
 
 jest.mock('node:fs/promises', () => ({
+  ...jest.requireActual<typeof import('node:fs/promises')>('node:fs/promises'),
   get appendFile() {
     // Re-read the reference on each access so tests that replace mockAppendFile see it.
     return mockAppendFile;
@@ -28,7 +29,7 @@ describe('HMAC append-only log', () => {
     expect(isOk(r1)).toBe(true);
     const r2 = await appendEntry(file, SECRET, { user: 'viewer', message: 'GET_STATUS' });
     expect(isOk(r2)).toBe(true);
-    expect(isOk(verifyChain(file, SECRET))).toBe(true);
+    expect(isOk(await verifyChain(file, SECRET))).toBe(true);
   });
   it('detects tampering when an entry is modified', async () => {
     const file = tmpFile();
@@ -39,16 +40,16 @@ describe('HMAC append-only log', () => {
     const entry = JSON.parse(rawLine);
     entry.message = 'START_VIDEO';
     writeFileSync(file, JSON.stringify(entry) + '\n');
-    expect(isErr(verifyChain(file, SECRET))).toBe(true);
+    expect(isErr(await verifyChain(file, SECRET))).toBe(true);
   });
-  it('verifies an empty (non-existent) log as intact', () => {
-    expect(isOk(verifyChain(tmpFile(), SECRET))).toBe(true);
+  it('verifies an empty (non-existent) log as intact', async () => {
+    expect(isOk(await verifyChain(tmpFile(), SECRET))).toBe(true);
   });
-  it('verifies an empty (existing but empty) log file as intact', () => {
+  it('verifies an empty (existing but empty) log file as intact', async () => {
     const file = tmpFile();
     // Create the file but leave it empty — exercises the raw.length === 0 branch
     writeFileSync(file, '', 'utf8');
-    expect(isOk(verifyChain(file, SECRET))).toBe(true);
+    expect(isOk(await verifyChain(file, SECRET))).toBe(true);
   });
   it('detects a broken prevHash chain when prevHash field is altered', async () => {
     const file = tmpFile();
@@ -59,7 +60,7 @@ describe('HMAC append-only log', () => {
     // Overwrite prevHash to break the chain linkage
     entry.prevHash = 'CORRUPTED';
     writeFileSync(file, JSON.stringify(entry) + '\n');
-    expect(isErr(verifyChain(file, SECRET))).toBe(true);
+    expect(isErr(await verifyChain(file, SECRET))).toBe(true);
   });
   it('detects tampering when only the hmac field is replaced', async () => {
     const file = tmpFile();
@@ -68,12 +69,12 @@ describe('HMAC append-only log', () => {
     const entry = JSON.parse(lines[0] ?? '{}') as LogEntry;
     const tampered = { ...entry, hmac: 'a'.repeat(64) };
     writeFileSync(file, JSON.stringify(tampered) + '\n');
-    expect(isErr(verifyChain(file, SECRET))).toBe(true);
+    expect(isErr(await verifyChain(file, SECRET))).toBe(true);
   });
-  it('returns err when the log file contains invalid JSON', () => {
+  it('returns err when the log file contains invalid JSON', async () => {
     const file = tmpFile();
     writeFileSync(file, 'not valid json\n');
-    expect(isErr(verifyChain(file, SECRET))).toBe(true);
+    expect(isErr(await verifyChain(file, SECRET))).toBe(true);
   });
   it('returns err from appendEntry when log file is corrupted', async () => {
     const file = tmpFile();
@@ -89,7 +90,7 @@ describe('HMAC append-only log', () => {
     // Overwrite hmac with a non-string to trigger the catch branch in timingSafeEqual
     const broken = { ...entry, hmac: 42 };
     writeFileSync(file, JSON.stringify(broken) + '\n');
-    expect(isErr(verifyChain(file, SECRET))).toBe(true);
+    expect(isErr(await verifyChain(file, SECRET))).toBe(true);
   });
   it('returns err when the file cannot be written', async () => {
     mockAppendFile.mockRejectedValueOnce(new Error('ENOSPC: no space left on device'));

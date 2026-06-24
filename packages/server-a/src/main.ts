@@ -10,8 +10,8 @@ import { createFfmpegRtspIngestor } from './adapters/ffmpeg-rtsp-ingestor';
 
 const env = (key: string, fallback: string): string => process.env[key] ?? fallback;
 
-const main = (): void => {
-  const verifier = createJoseTokenVerifier(env('PUBLIC_KEY_PATH', 'config/keys/public.pem'));
+const main = async (): Promise<void> => {
+  const verifier = await createJoseTokenVerifier(env('PUBLIC_KEY_PATH', 'config/keys/public.pem'));
   const sessions = createRedisSessionStore(env('REDIS_URL', 'redis://127.0.0.1:6379'));
 
   let state = createState(Date.now());
@@ -41,4 +41,7 @@ const main = (): void => {
   control.start();
 };
 
-main();
+main().catch((err: unknown) => {
+  console.error('Fatal startup error:', err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});
