@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { WebSocketServer } from 'ws';
 import type { CommandCipher } from '@vss/shared';
 import { loadNativeAddon, createNativeCryptoCipher } from '@vss/native-crypto';
@@ -17,8 +17,8 @@ import { createNodeCryptoCipher } from './crypto/node-cipher';
 
 const buildCipher = async (cfg: { cipherImpl: 'node' | 'native' | 'tpm'; privateKeyPath: string; publicKeyPath: string }): Promise<CommandCipher> => {
   if (cfg.cipherImpl === 'node') {
-    const privatePem = readFileSync(cfg.privateKeyPath, 'utf8');
-    const publicPem = readFileSync(cfg.publicKeyPath, 'utf8');
+    const privatePem = await readFile(cfg.privateKeyPath, 'utf8');
+    const publicPem = await readFile(cfg.publicKeyPath, 'utf8');
     return createNodeCryptoCipher(privatePem, publicPem);
   }
   if (cfg.cipherImpl === 'native') {
@@ -33,10 +33,10 @@ const buildCipher = async (cfg: { cipherImpl: 'node' | 'native' | 'tpm'; private
 const main = async (): Promise<void> => {
   const cfg = loadServerBConfig(process.env);
 
-  const users = createJsonUserRepo(cfg.usersPath);
+  const users = await createJsonUserRepo(cfg.usersPath);
   const hasher = createBcryptHasher();
-  const issuer = createJoseTokenIssuer(cfg.privateKeyPath, cfg.jwtTtlSeconds);
-  const verifier = createJoseTokenVerifier(cfg.publicKeyPath);
+  const issuer = await createJoseTokenIssuer(cfg.privateKeyPath, cfg.jwtTtlSeconds);
+  const verifier = await createJoseTokenVerifier(cfg.publicKeyPath);
   const sessions = createRedisSessionStore(cfg.redisUrl);
   const audit = createHmacAuditLog(cfg.commandsLogPath, cfg.hmacSecret);
   const ids = createUuidIdGenerator();
