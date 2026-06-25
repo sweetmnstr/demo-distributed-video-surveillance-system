@@ -1,5 +1,5 @@
-import { createTpmCipher } from './tpm-cipher';
-import { TpmDevice } from './tpm-device';
+import { createTpmCipher } from '../tpm-cipher';
+import { TpmDevice } from '../tpm-device';
 
 const mockDevice = (over: Partial<TpmDevice> = {}): TpmDevice => ({
   getPublicKey: async () => '-----BEGIN PUBLIC KEY-----\nMOCK\n-----END PUBLIC KEY-----\n',
