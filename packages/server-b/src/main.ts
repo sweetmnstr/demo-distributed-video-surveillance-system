@@ -14,6 +14,7 @@ import { createWsCommandForwarder } from './adapters/ws-command-forwarder';
 import { buildHttpServer } from './adapters/fastify-http';
 import { startControlServer } from './adapters/ws-control-server';
 import { createNodeCryptoCipher } from './crypto/node-cipher';
+import { createSoftwareTpmDevice, createTpmCipher } from '@vss/tpm-crypto';
 
 const buildCipher = async (cfg: { cipherImpl: 'node' | 'native' | 'tpm'; privateKeyPath: string; publicKeyPath: string }): Promise<CommandCipher> => {
   if (cfg.cipherImpl === 'node') {
@@ -26,8 +27,10 @@ const buildCipher = async (cfg: { cipherImpl: 'node' | 'native' | 'tpm'; private
     await addon.generateKeyPair();
     return createNativeCryptoCipher(addon);
   }
-  // 'tpm' is wired in plan 09.
-  throw new Error(`cipher implementation '${cfg.cipherImpl}' is not available yet`);
+  if (cfg.cipherImpl === 'tpm') {
+    return createTpmCipher(createSoftwareTpmDevice());
+  }
+  throw new Error(`cipher implementation '${cfg.cipherImpl}' is not available`);
 };
 
 const main = async (): Promise<void> => {

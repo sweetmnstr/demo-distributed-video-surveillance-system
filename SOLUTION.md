@@ -41,3 +41,10 @@ bundled OpenSSL headers — no external OpenSSL install. The JS wrapper is unit
 -tested to 100% with a mock addon; the compiled binary is verified by a round
 -trip integration test. C++-level unit tests were left optional given the small
 surface and the integration coverage.
+
+## Bonus D — TPM
+A `TpmDevice` port models a sealed key: decryption runs inside the device and the
+private key is non-exportable (enforced and unit-tested). The Linux container uses
+a software-emulated device; the Windows PCP/CNG hardware path sits behind the same
+port and is deferred to a Windows machine. The Windows device is the single
+documented exception to 100% coverage on Linux, since it cannot execute there.

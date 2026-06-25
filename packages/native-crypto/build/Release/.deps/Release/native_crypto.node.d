@@ -1,1 +1,0 @@
-cmd_Release/native_crypto.node := c++ -bundle -undefined dynamic_lookup -Wl,-search_paths_first -mmacosx-version-min=13.5 -arch x86_64 -L./Release -stdlib=libc++  -o Release/native_crypto.node Release/obj.target/native_crypto/src/addon.o 
