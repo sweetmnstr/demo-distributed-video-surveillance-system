@@ -11,7 +11,7 @@ export interface Status {
 }
 
 export const createState = (nowMs: number): DeliveryState => ({
-  delivering: false,
+  delivering: true,
   clients: 0,
   startedAtMs: nowMs,
 });

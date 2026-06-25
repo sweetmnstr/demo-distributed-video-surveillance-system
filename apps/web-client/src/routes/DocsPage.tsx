@@ -1,6 +1,41 @@
+import { useEffect, useRef } from 'react';
+import mermaid from 'mermaid';
+
+// Initialize once at module load — calling it per-render is unnecessary and
+// causes spurious re-initialization on hot reloads.
+mermaid.initialize({ startOnLoad: false });
+
+// Flowchart depicting the distributed system topology.
+const DIAGRAM = `flowchart LR
+  Cam[Camera-sim RTSP] -->|RTSP 1111| A[Server A]
+  A -->|fMP4 over WS 2222| W[Web Client]
+  W -->|login + commands WS 3002| B[Server B]
+  B -->|control WS 3001 no REST| A
+  B <-->|sessions| R[(Redis)]
+  A <-->|jti revocation| R`;
+
+// Exported for direct testability of the null-ref guard.
+export function runMermaidEffect(el: HTMLDivElement | null): void {
+  if (!el) return;
+  mermaid.render('vss-diagram', DIAGRAM).then(({ svg }) => {
+    if (el) el.innerHTML = svg;
+  }).catch((err: unknown) => {
+    console.error('[DocsPage] mermaid.render failed:', err);
+  });
+}
+
+const MermaidDiagram = (): JSX.Element => {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    runMermaidEffect(ref.current);
+  }, []);
+  return <div ref={ref} data-testid="architecture-diagram" />;
+};
+
 export const DocsPage = (): JSX.Element => (
   <main aria-labelledby="docs-heading">
     <h1 id="docs-heading">Architecture &amp; Docs</h1>
+
     <section>
       <h2>Overview</h2>
       <p>
@@ -10,6 +45,12 @@ export const DocsPage = (): JSX.Element => (
         Server A over a dedicated server-to-server WebSocket, and keeps a tamper-evident log.
       </p>
     </section>
+
+    <section>
+      <h2>Architecture</h2>
+      <MermaidDiagram />
+    </section>
+
     <section>
       <h2>Technologies</h2>
       <ul>
@@ -19,6 +60,82 @@ export const DocsPage = (): JSX.Element => (
         <li>HMAC-chained append-only command log — tamper evidence.</li>
       </ul>
     </section>
+
+    <section>
+      <h2>Setup Instructions</h2>
+      <ol>
+        <li>
+          Install Node.js 20+ and Redis (local install or WSL2{' '}
+          <code>apt-get install redis-server</code>).
+        </li>
+        <li>
+          Install dependencies:
+          <pre><code>npm install</code></pre>
+        </li>
+        <li>
+          Generate the RS256 key pair:
+          <pre><code>node scripts/setup-keys.mjs</code></pre>
+          This creates <code>config/keys/private.pem</code> and{' '}
+          <code>config/keys/public.pem</code>.
+        </li>
+        <li>
+          Seed demo users:
+          <pre><code>npm run seed:users --workspace @vss/server-b</code></pre>
+          Creates <code>config/users.json</code> with demo accounts.
+        </li>
+        <li>
+          Start each workspace in a separate terminal:
+          <pre><code>
+{`npm run start --workspace @vss/camera-sim
+npm run start --workspace @vss/server-a
+npm run start --workspace @vss/server-b
+npm run dev   --workspace @vss/web-client`}
+          </code></pre>
+        </li>
+        <li>
+          Open <code>http://127.0.0.1:5173</code> in your browser and log in with a
+          demo account, e.g. <strong>operator</strong> / <strong>operator123</strong>.
+        </li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Architectural Decisions</h2>
+      <dl>
+        <dt>Streaming technology: MSE + fMP4 over WebSocket</dt>
+        <dd>
+          Chosen for ~1 s latency, native browser support without plugins, and a clean
+          STOP_VIDEO boundary. HLS was ruled out for latency; WebRTC for complexity.
+        </dd>
+
+        <dt>Inter-server transport: WebSocket (no REST)</dt>
+        <dd>
+          A persistent WS between Server B and Server A carries control commands. The
+          channel auto-reconnects with exponential back-off and sends heartbeats to detect
+          silent failures. REST was explicitly excluded by the assignment.
+        </dd>
+
+        <dt>Access control: JWT RS256 + Redis revocation list</dt>
+        <dd>
+          Server A validates tokens independently (no round-trip to Server B). Revoked
+          JTIs are stored in Redis so both servers share the revocation state without
+          tight coupling.
+        </dd>
+
+        <dt>Audit log: HMAC-chained append-only file</dt>
+        <dd>
+          Each command entry is linked to the previous entry&apos;s hash, making retrospective
+          tampering detectable without a database.
+        </dd>
+
+        <dt>Monorepo: npm workspaces</dt>
+        <dd>
+          Single lockfile, shared <code>@vss/shared</code> package for protocol types,
+          JWT helpers, and logging — eliminates copy-paste drift between servers.
+        </dd>
+      </dl>
+    </section>
+
     <section>
       <h2>Limitations</h2>
       <ul>

@@ -4,16 +4,19 @@ import {
 } from '../delivery-state';
 
 describe('delivery state', () => {
-  it('starts not delivering with zero clients', () => {
+  it('starts in the delivering state', () => {
+    expect(createState(0).delivering).toBe(true);
+  });
+  it('starts delivering with zero clients', () => {
     const s = createState(1000);
-    expect(s).toEqual({ delivering: false, clients: 0, startedAtMs: 1000 });
+    expect(s).toEqual({ delivering: true, clients: 0, startedAtMs: 1000 });
   });
   it('toggles the delivery flag without mutating the input', () => {
     const s = createState(0);
-    const started = startDelivery(s);
-    expect(started.delivering).toBe(true);
-    expect(s.delivering).toBe(false); // original untouched
-    expect(stopDelivery(started).delivering).toBe(false);
+    const stopped = stopDelivery(s);
+    expect(stopped.delivering).toBe(false);
+    expect(s.delivering).toBe(true); // original untouched
+    expect(startDelivery(stopped).delivering).toBe(true);
   });
   it('tracks client connect/disconnect and never goes negative', () => {
     let s = createState(0);

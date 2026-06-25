@@ -1,4 +1,6 @@
-const BASE = import.meta.env.VITE_SERVER_B_HTTP ?? 'http://127.0.0.1:3000';
+import { env } from '../lib/env';
+
+const BASE = env.serverBHttp;
 
 // Posts credentials to Server B and returns the JWT, or throws a friendly error.
 export const login = async (loginName: string, password: string): Promise<string> => {

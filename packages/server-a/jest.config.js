@@ -6,7 +6,6 @@ module.exports = {
     'src/**/*.ts',
     '!src/**/*.test.ts',
     '!src/ports/**',
-    '!src/adapters/**',
     '!src/main.ts',
   ],
 };
