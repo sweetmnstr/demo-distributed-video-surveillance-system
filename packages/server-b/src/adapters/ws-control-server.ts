@@ -62,9 +62,8 @@ export const startControlServer = (deps: ControlServerDeps): void => {
           if (decrypted.kind === 'err') return send(socket, { type: 'error', text: decrypted.error });
           return routeCommand(decrypted.value, session, socket, deps);
         }
-        // TypeScript exhaustiveness guard — compile error if a new discriminant is added without a handler
-        const _never: never = msg;
-        void _never;
+        /* istanbul ignore next -- TypeScript exhaustiveness guard; unreachable at runtime by design */
+        void ((_exhaustive: never) => _exhaustive)(msg);
       } catch {
         send(socket, { type: 'error', text: 'internal error' });
         socket.close(1011);

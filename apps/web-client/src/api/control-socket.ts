@@ -1,7 +1,8 @@
 import { ControlServerMessage, Command } from '@vss/shared';
 import { authMessage, commandMessage } from '../lib/messages';
+import { env } from '../lib/env';
 
-const WS_URL = import.meta.env.VITE_SERVER_B_WS ?? 'ws://127.0.0.1:3000';
+const WS_URL = env.serverBWs;
 
 export interface ControlSocketHandlers {
   onResponse(ok: boolean, text: string): void;

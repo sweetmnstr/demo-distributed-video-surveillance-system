@@ -29,7 +29,7 @@ describe('handleCommand', () => {
     const ctx = makeCtx(clientConnected(createState(1000)), 4000);
     const r = handleCommand('GET_STATUS', ctx);
     expect(r.ok).toBe(true);
-    expect(r.text).toBe('videoRunning=false clientsConnected=1 uptimeSec=3');
+    expect(r.text).toBe('videoRunning=true clientsConnected=1 uptimeSec=3');
   });
   it('LOGOUT is not an A command and is reported as such', () => {
     const ctx = makeCtx(createState(0));

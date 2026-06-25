@@ -1,4 +1,6 @@
-const BASE = import.meta.env.VITE_SERVER_B_HTTP ?? 'http://127.0.0.1:3000';
+import { env } from '../lib/env';
+
+const BASE = env.serverBHttp;
 
 const pemToArrayBuffer = (pem: string): ArrayBuffer => {
   const body = pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');

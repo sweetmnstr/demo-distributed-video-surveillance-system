@@ -1,6 +1,7 @@
 import { AppendQueue, emptyQueue, enqueue, onUpdateEnd } from '../lib/mse-buffer';
+import { env } from '../lib/env';
 
-const WS_URL = import.meta.env.VITE_SERVER_A_WS ?? 'ws://127.0.0.1:2222';
+const WS_URL = env.serverAWs;
 const MIME = 'video/mp4; codecs="avc1.42E01E"';
 
 // Connects the fMP4 video WS to a MediaSource/SourceBuffer using the pure

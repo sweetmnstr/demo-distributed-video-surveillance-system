@@ -8,8 +8,6 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.test.ts',
-    '!src/process-runner.ts',
-    '!src/real-runner.ts',
     '!src/main.ts',
   ],
 };

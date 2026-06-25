@@ -1,8 +1,13 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { publicEncrypt, constants } from 'node:crypto';
 import { loadNativeAddon } from '../native-addon';
 import { createNativeCryptoCipher } from '../native-cipher';
 
-describe('native-crypto round-trip (built addon)', () => {
+const BINARY = resolve(__dirname, '..', '..', 'build', 'Release', 'native_crypto.node');
+const describeIfBuilt = existsSync(BINARY) ? describe : describe.skip;
+
+describeIfBuilt('native-crypto round-trip (built addon)', () => {
   it('generates a key, exports the public key, and decrypts an OAEP ciphertext', async () => {
     const addon = loadNativeAddon();
     await addon.generateKeyPair();

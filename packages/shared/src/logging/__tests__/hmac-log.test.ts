@@ -11,11 +11,20 @@ const mockAppendFile = jest.fn(
     jest.requireActual<typeof import('node:fs/promises')>('node:fs/promises').appendFile(...args),
 );
 
+const mockReadFile = jest.fn(
+  (...args: Parameters<typeof import('node:fs/promises').readFile>) =>
+    jest.requireActual<typeof import('node:fs/promises')>('node:fs/promises').readFile(...args),
+);
+
 jest.mock('node:fs/promises', () => ({
   ...jest.requireActual<typeof import('node:fs/promises')>('node:fs/promises'),
   get appendFile() {
     // Re-read the reference on each access so tests that replace mockAppendFile see it.
     return mockAppendFile;
+  },
+  get readFile() {
+    // Re-read the reference on each access so tests that replace mockReadFile see it.
+    return mockReadFile;
   },
 }));
 
@@ -105,5 +114,22 @@ describe('HMAC append-only log', () => {
     const result = await appendEntry(file, SECRET, { user: 'admin', message: 'test' });
     expect(isErr(result)).toBe(true);
     if (isErr(result)) expect(result.error).toBe('append failed');
+  });
+});
+
+// readEntries re-throws non-ENOENT read errors (hmac-log.ts:31-32).
+describe('hmac-log readEntries error propagation', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('re-throws a non-ENOENT read error from readEntries (called by appendEntry)', async () => {
+    const eacces = Object.assign(new Error('denied'), { code: 'EACCES' });
+    mockReadFile.mockRejectedValueOnce(eacces);
+    await expect(appendEntry('any.log', 'secret', { user: 'u', message: 'm' })).rejects.toThrow('denied');
+  });
+
+  it('re-throws a non-ENOENT read error from readEntries (called by verifyChain)', async () => {
+    const eacces = Object.assign(new Error('denied'), { code: 'EACCES' });
+    mockReadFile.mockRejectedValueOnce(eacces);
+    await expect(verifyChain('any.log', 'secret')).rejects.toThrow('denied');
   });
 });

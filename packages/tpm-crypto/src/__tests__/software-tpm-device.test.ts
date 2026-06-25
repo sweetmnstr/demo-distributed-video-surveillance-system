@@ -1,5 +1,5 @@
 import { publicEncrypt, constants } from 'node:crypto';
-import { createSoftwareTpmDevice } from './software-tpm-device';
+import { createSoftwareTpmDevice } from '../software-tpm-device';
 
 describe('SoftwareTpmDevice (emulated sealed key)', () => {
   it('exposes a public key and decrypts inside the device', async () => {

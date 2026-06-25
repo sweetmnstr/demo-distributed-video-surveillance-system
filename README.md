@@ -2,13 +2,12 @@
 
 A TypeScript/Node.js prototype: an RTSP camera simulator, a video server (Server A),
 an auth & management server (Server B), and a React web client. See `SOLUTION.md`
-for architectural decisions and `docs/superpowers/specs` for the full design.
+for architectural decisions.
 
 ## Prerequisites
 
 - Node.js 20+
-- Docker + Docker Compose (for the orchestrated run)
-- (Native Windows 11 run) no Docker required; see "Native run" below
+- Redis (local installation or WSL2)
 
 ## Setup
 
@@ -16,14 +15,6 @@ for architectural decisions and `docs/superpowers/specs` for the full design.
 npm install
 node scripts/setup-keys.mjs                  # RSA key pair -> config/keys/
 npm run seed:users --workspace @vss/server-b # demo users -> config/users.json
-```
-
-## Run with docker-compose (recommended)
-
-```bash
-docker compose up --build -d
-# Web client:   http://127.0.0.1:8080
-# Server B API: http://127.0.0.1:3000  (/auth/login, /protected, /publicKey)
 ```
 
 ## Demo users
@@ -36,6 +27,50 @@ docker compose up --build -d
 
 `operator` may START/STOP the video; `viewer` may only GET_STATUS.
 
+## Run (Native on Windows 11, no Docker)
+
+This is the primary way to run the system locally on Windows 11:
+
+1. **Install Redis:**
+   - Windows: [Download Redis MSI](https://github.com/microsoftarchive/redis/releases) or use WSL2 with `apt-get install redis-server`
+   - Start Redis: `redis-server` (or use Windows Service if installed)
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Generate RSA keys:**
+   ```bash
+   node scripts/setup-keys.mjs
+   ```
+   This creates `config/keys/private.pem` and `config/keys/public.pem`.
+
+4. **Seed demo users:**
+   ```bash
+   npm run seed:users --workspace @vss/server-b
+   ```
+   This creates `config/users.json` with demo accounts.
+
+5. **Start each workspace** (in separate terminal windows):
+   ```bash
+   # Terminal 1 - Camera simulator (RTSP on 127.0.0.1:1111)
+   npm run start --workspace @vss/camera-sim
+
+   # Terminal 2 - Server A (Video server, WebSocket on 127.0.0.1:2222)
+   npm run start --workspace @vss/server-a
+
+   # Terminal 3 - Server B (Auth & control, HTTP on 127.0.0.1:3000, WebSocket on 127.0.0.1:3002)
+   npm run start --workspace @vss/server-b
+
+   # Terminal 4 - Web Client (dev server on 127.0.0.1:5173)
+   npm run dev --workspace @vss/web-client
+   ```
+
+6. **Access the web client:**
+   - Open http://127.0.0.1:5173 in your browser
+   - Login with any demo user from the table above
+
 ## Test
 
 ```bash
@@ -43,16 +78,14 @@ npm test                              # all unit + integration suites (100% gate
 npm run test:e2e --workspace @vss/e2e # Playwright critical flows (stack must be up)
 ```
 
-## Native run (Windows 11, no Docker)
+## Optional: Run with Docker Compose
 
-Run a local Redis and start each workspace with the `.env.example` values
-adjusted to `127.0.0.1` hosts:
+If you prefer an orchestrated containerized setup:
 
 ```bash
-npm run start --workspace @vss/camera-sim
-npm run start --workspace @vss/server-a
-npm run start --workspace @vss/server-b
-npm run dev   --workspace @vss/web-client
+docker compose up --build -d
+# Web client:   http://127.0.0.1:8080
+# Server B API: http://127.0.0.1:3000  (/auth/login, /protected, /publicKey)
 ```
 
 ## Native crypto addon (Bonus C)

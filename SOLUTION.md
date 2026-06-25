@@ -48,3 +48,45 @@ private key is non-exportable (enforced and unit-tested). The Linux container us
 a software-emulated device; the Windows PCP/CNG hardware path sits behind the same
 port and is deferred to a Windows machine. The Windows device is the single
 documented exception to 100% coverage on Linux, since it cannot execute there.
+
+## Test coverage policy
+All adapters and the web-client UI are tested to 100% coverage. Two categories are
+excluded:
+
+1. **Port interfaces (`ports/**`):** Type-only definitions with no executable code;
+   coverage would be meaningless.
+
+2. **Composition roots (`main.ts` in packages, `main.tsx` in web-client) and type
+   declarations (`vite-env.d.ts`):** These files wire dependencies at the integration
+   level and are implicitly tested by the full stack (Playwright E2E and manual
+   integration tests). Composition roots themselves have no business logic — they
+   bootstrap the application. Testing them in isolation would be redundant.
+
+All business logic, use-cases, and adapters (HTTP endpoints, WebSocket handlers,
+RTSP client, ffmpeg wrapper, Redis sessions, file logging) are covered by unit
+and integration tests.
+
+## Native addon round-trip test — auto-skip when binary absent
+The round-trip integration test (`shared/crypto/src/__tests__/round-trip.int.test.ts`)
+uses a `describeIfBuilt` helper that checks for the compiled binary (`build/Release/native_crypto.node`)
+at suite startup. If the MSVC toolchain is not installed or the binary was not built,
+the test is skipped gracefully with a clear message. The JS wrapper is unit-tested
+to 100% with a mock addon; if the binary is present, the integration test confirms
+the compiled code works end-to-end. This ensures the suite passes regardless of
+toolchain availability.
+
+## Server A video delivery — starts on by default
+`Server A` initializes with `delivering: true` in its state. This means video streams
+to all authenticated clients immediately on startup. The `START_VIDEO` and `STOP_VIDEO`
+commands toggle the `delivering` flag; `STOP_VIDEO` stops forwarding fragments while
+`ffmpeg` keeps running. This default-on behavior ensures video is flowing unless
+explicitly paused by a command.
+
+## UI command encryption — RSA-OAEP with plaintext fallback
+The main screen (`MainScreen` in web-client) calls `createEncryptor()` on component
+mount to fetch the server's RSA-2048 public key. All commands sent via the command
+console are encrypted with RSA-OAEP before transmission via the `sendEncrypted()`
+method. If the public key fetch fails, the UI logs a warning and falls back to
+plaintext transmission via `send()` so that video control remains functional. The
+server always receives ciphertext or plaintext uniformly, decrypts ciphertext with
+the TPM-sealed private key, and processes the command normally.
