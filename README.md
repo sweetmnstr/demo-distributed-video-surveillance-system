@@ -65,3 +65,10 @@ Building it requires a C/C++ toolchain:
 
 Enable it with `CIPHER_IMPL=native`. The addon generates its own key pair at
 startup; `/publicKey` then serves the addon's public key.
+
+## TPM-backed cipher (Bonus D)
+
+Enable with `CIPHER_IMPL=tpm`. On Linux the key is sealed in a **software-emulated
+TPM**; the private key is never exported (a unit test asserts the export attempt
+throws). The real Windows 11 path (Platform Crypto Provider / CNG, non-exportable
+key) is deferred to a Windows machine and selected automatically on `win32`.
