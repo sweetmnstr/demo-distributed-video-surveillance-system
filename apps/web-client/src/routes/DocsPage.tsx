@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import mermaid from 'mermaid';
+import { NavBar } from '../components/nav/NavBar';
 
 // Initialize once at module load — calling it per-render is unnecessary and
 // causes spurious re-initialization on hot reloads.
@@ -34,12 +35,7 @@ const MermaidDiagram = (): JSX.Element => {
 
 export const DocsPage = (): JSX.Element => (
   <div className="app">
-    <header className="app-header">
-      <span className="brand">
-        <span className="brand__mark">FIXAR</span>
-        <span className="brand__sub">Surveillance</span>
-      </span>
-    </header>
+    <NavBar links={[{ label: 'Live', to: '/' }]} />
     <main className="app-main docs" aria-labelledby="docs-heading">
       <h1 id="docs-heading" className="docs__title">
         Architecture <span className="docs__title-accent">&amp; Docs</span>

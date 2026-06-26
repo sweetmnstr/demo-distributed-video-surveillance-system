@@ -31,6 +31,11 @@ verification, not URL hiding.
 Redis `session:{jti}` with a 1h TTL matching the JWT. LOGOUT deletes the key, so
 Server A's next check rejects the video WS.
 
+The web client persists the JWT in `localStorage` so a reload keeps the session.
+This trades the previous in-memory-only hardening (unreadable by XSS) for
+persistence, which is acceptable for this prototype; an expired or malformed token
+is discarded on load and the `jti` remains revocable server-side via LOGOUT.
+
 ## Tamper-evident log
 Append-only `commands.log` with an HMAC-SHA256 chain (`prevHash` links entries).
 A middle entry cannot be altered without recomputing the tail, and the secret is

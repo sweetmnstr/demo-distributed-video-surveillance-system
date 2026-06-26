@@ -69,6 +69,9 @@ This is the primary way to run the system locally on Windows 11:
    npm run dev --workspace @vss/web-client
    ```
 
+   The camera loops `test.mp4` by default (re-encoded to baseline H.264). Point it
+   at another file with `CAMERA_SOURCE=/abs/path/to/video.mp4`.
+
    Each service logs structured lines (`<timestamp> [component] LEVEL message`) so
    you can follow startup, camera/stream state, viewer connects, and commands.
 

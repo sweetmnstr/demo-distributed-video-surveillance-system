@@ -11,6 +11,7 @@ const mockMermaid = {
 jest.mock('mermaid', () => mockMermaid);
 
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import mermaid from 'mermaid';
 import { DocsPage, runMermaidEffect } from './DocsPage';
 
@@ -56,7 +57,12 @@ describe('runMermaidEffect', () => {
 
 describe('DocsPage', () => {
   beforeEach(() => {
-    render(<DocsPage />);
+    render(<MemoryRouter><DocsPage /></MemoryRouter>);
+  });
+
+  it('shows a navbar link back to the live view', () => {
+    // beforeEach has already rendered; no second render needed.
+    expect(screen.getByRole('link', { name: 'Live' })).toHaveAttribute('href', '/');
   });
 
   it('renders the top-level heading', () => {

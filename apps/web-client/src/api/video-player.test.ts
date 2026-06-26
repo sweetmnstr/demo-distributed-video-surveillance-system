@@ -38,6 +38,7 @@ class FakeSourceBuffer {
 // A MediaSource stub that delegates addSourceBuffer() to FakeSourceBuffer.
 class FakeMediaSource {
   static last: FakeMediaSource;
+  static lastMime: string;
   readyState: 'open' | 'closed' | 'ended' = 'open';
   private listeners: Record<string, Array<() => void>> = {};
   readonly endOfStream = jest.fn();
@@ -51,7 +52,8 @@ class FakeMediaSource {
     this.listeners[type].push(cb);
   }
 
-  addSourceBuffer(_mime: string): FakeSourceBuffer {
+  addSourceBuffer(mime: string): FakeSourceBuffer {
+    FakeMediaSource.lastMime = mime;
     return new FakeSourceBuffer();
   }
 
@@ -102,8 +104,10 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-// Helper: build a minimal HTMLVideoElement stub.
-const makeVideoEl = (): HTMLVideoElement => ({ src: '' } as HTMLVideoElement);
+// Helper: build a minimal HTMLVideoElement stub. `buffered` defaults to an empty
+// TimeRanges so the live-edge seek is a no-op unless a test supplies a range.
+const makeVideoEl = (buffered: TimeRanges = { length: 0, start: () => 0, end: () => 0 } as TimeRanges): HTMLVideoElement =>
+  ({ src: '', currentTime: 0, buffered } as HTMLVideoElement);
 
 // Helper: open the MediaSource and WebSocket so tests start from a ready state.
 const openAll = (): { video: HTMLVideoElement; stop: () => void } => {
@@ -119,6 +123,15 @@ describe('attachVideo', () => {
     const video = makeVideoEl();
     attachVideo(video, 'jwt');
     expect(video.src).toBe('blob:fake');
+  });
+
+  it('declares the SourceBuffer codec matching the delivered baseline H.264 Level 3.1 stream', () => {
+    // Server A delivers test.mp4 re-encoded to baseline 1280x720, whose avcC
+    // reports Level 3.1 (0x1F). The MIME must declare avc1.42C01F so MSE does not
+    // reject the stream for exceeding a too-low declared level (e.g. avc1.42E01E = L3.0).
+    const { stop } = openAll();
+    expect(FakeMediaSource.lastMime).toBe('video/mp4; codecs="avc1.42C01F"');
+    stop();
   });
 
   it('sends the JWT token over WebSocket when the connection opens', () => {
@@ -203,6 +216,36 @@ describe('attachVideo', () => {
     FakeSourceBuffer.last.emit('updateend');
     expect(FakeSourceBuffer.last.appended).toHaveLength(1);
 
+    stop();
+  });
+
+  it('seeks a late joiner to the buffered start when the playhead is behind the live data', () => {
+    // A client joining mid-stream receives fragments whose baseMediaDecodeTime is
+    // far ahead of currentTime=0, so the buffered range starts in the future and
+    // nothing ever plays. After appending, the playhead must jump into the buffer.
+    const buffered = { length: 1, start: () => 5.5, end: () => 6 } as TimeRanges;
+    const video = makeVideoEl(buffered);
+    const stop = attachVideo(video, 'jwt');
+    FakeMediaSource.last.emit('sourceopen');
+    FakeWS.last.emit('open');
+    FakeWS.last.emit('message', { data: new Uint8Array([1, 2, 3]).buffer });
+    FakeSourceBuffer.last.emit('updateend');
+
+    expect(video.currentTime).toBe(5.5);
+    stop();
+  });
+
+  it('does not move the playhead when it is already within the buffered range', () => {
+    const buffered = { length: 1, start: () => 0, end: () => 4 } as TimeRanges;
+    const video = makeVideoEl(buffered);
+    video.currentTime = 2;
+    const stop = attachVideo(video, 'jwt');
+    FakeMediaSource.last.emit('sourceopen');
+    FakeWS.last.emit('open');
+    FakeWS.last.emit('message', { data: new Uint8Array([1]).buffer });
+    FakeSourceBuffer.last.emit('updateend');
+
+    expect(video.currentTime).toBe(2);
     stop();
   });
 

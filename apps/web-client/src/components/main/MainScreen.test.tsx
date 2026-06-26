@@ -28,6 +28,7 @@ jest.mock('@vss/shared', () => {
 
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { openControlSocket } from '../../api/control-socket';
 import { parseCommand } from '@vss/shared';
 import { createEncryptor } from '../../api/encrypt';
@@ -62,6 +63,11 @@ const makeSocketStub = (): SocketStub => {
   return stub as SocketStub;
 };
 
+// Wraps MainScreen in a MemoryRouter because NavBar renders <Link> which
+// requires a router context; without it every render would throw.
+const renderMain = (props: { token: string; onLogout: () => void }) =>
+  render(<MemoryRouter><MainScreen {...props} /></MemoryRouter>);
+
 // Default: encryptor unavailable — tests that need encryption set their own mock.
 beforeEach(() => {
   (createEncryptor as jest.Mock).mockRejectedValue(new Error('no key'));
@@ -74,7 +80,7 @@ describe('MainScreen', () => {
     makeSocketStub();
     (parseCommand as jest.Mock).mockReturnValue({ kind: 'ok', value: 'GET_STATUS' });
 
-    render(<MainScreen token="my-jwt" onLogout={jest.fn()} />);
+    renderMain({ token: 'my-jwt', onLogout: jest.fn() });
 
     expect(openControlSocket).toHaveBeenCalledWith('my-jwt', expect.objectContaining({
       onResponse: expect.any(Function),
@@ -88,7 +94,7 @@ describe('MainScreen', () => {
 
     // A token whose payload decodes to role=operator exercises decodeRole's success path.
     const payload = btoa(JSON.stringify({ role: 'operator' }));
-    render(<MainScreen token={`header.${payload}.sig`} onLogout={jest.fn()} />);
+    renderMain({ token: `header.${payload}.sig`, onLogout: jest.fn() });
 
     expect(screen.getByRole('option', { name: 'START_VIDEO' })).toBeInTheDocument();
   });
@@ -97,7 +103,7 @@ describe('MainScreen', () => {
     makeSocketStub();
     (parseCommand as jest.Mock).mockReturnValue({ kind: 'ok', value: 'START_VIDEO' });
 
-    render(<MainScreen token="tok" onLogout={jest.fn()} />);
+    renderMain({ token: 'tok', onLogout: jest.fn() });
 
     await userEvent.selectOptions(screen.getByRole('combobox', { name: /command/i }), 'GET_STATUS');
     await userEvent.click(screen.getByRole('button', { name: /send/i }));
@@ -113,7 +119,7 @@ describe('MainScreen', () => {
     makeSocketStub();
     (parseCommand as jest.Mock).mockReturnValue({ kind: 'err', error: 'unknown command: NOPE' });
 
-    render(<MainScreen token="tok" onLogout={jest.fn()} />);
+    renderMain({ token: 'tok', onLogout: jest.fn() });
 
     await userEvent.selectOptions(screen.getByRole('combobox', { name: /command/i }), 'GET_STATUS');
     await userEvent.click(screen.getByRole('button', { name: /send/i }));
@@ -127,7 +133,7 @@ describe('MainScreen', () => {
     const stub = makeSocketStub();
     (parseCommand as jest.Mock).mockReturnValue({ kind: 'ok', value: 'GET_STATUS' });
 
-    render(<MainScreen token="tok" onLogout={jest.fn()} />);
+    renderMain({ token: 'tok', onLogout: jest.fn() });
 
     act(() => stub._onResponse(true, 'video running'));
 
@@ -138,7 +144,7 @@ describe('MainScreen', () => {
     const stub = makeSocketStub();
     (parseCommand as jest.Mock).mockReturnValue({ kind: 'ok', value: 'GET_STATUS' });
 
-    render(<MainScreen token="tok" onLogout={jest.fn()} />);
+    renderMain({ token: 'tok', onLogout: jest.fn() });
 
     act(() => stub._onResponse(false, 'not authorised'));
 
@@ -148,7 +154,7 @@ describe('MainScreen', () => {
   it('adds a connection-error line when the socket reports an error', async () => {
     const stub = makeSocketStub();
 
-    render(<MainScreen token="tok" onLogout={jest.fn()} />);
+    renderMain({ token: 'tok', onLogout: jest.fn() });
 
     act(() => stub._onConnectionError('server unreachable'));
 
@@ -159,7 +165,7 @@ describe('MainScreen', () => {
     const stub = makeSocketStub();
     const onLogout = jest.fn();
 
-    render(<MainScreen token="tok" onLogout={onLogout} />);
+    renderMain({ token: 'tok', onLogout });
 
     act(() => stub._onResponse(true, 'LOGOUT acknowledged'));
 
@@ -170,7 +176,7 @@ describe('MainScreen', () => {
     const stub = makeSocketStub();
     const onLogout = jest.fn();
 
-    render(<MainScreen token="tok" onLogout={onLogout} />);
+    renderMain({ token: 'tok', onLogout });
 
     act(() => stub._onResponse(false, 'logout not allowed'));
 
@@ -180,7 +186,7 @@ describe('MainScreen', () => {
   it('closes the socket on unmount', () => {
     makeSocketStub();
 
-    const { unmount } = render(<MainScreen token="tok" onLogout={jest.fn()} />);
+    const { unmount } = renderMain({ token: 'tok', onLogout: jest.fn() });
     const actualStub = (openControlSocket as jest.Mock).mock.results[0]?.value as SocketStub;
 
     act(() => unmount());
@@ -194,7 +200,7 @@ describe('MainScreen', () => {
     (createEncryptor as jest.Mock).mockResolvedValue(encrypt);
     (parseCommand as jest.Mock).mockReturnValue({ kind: 'ok', value: 'GET_STATUS' });
 
-    render(<MainScreen token="tok" onLogout={jest.fn()} />);
+    renderMain({ token: 'tok', onLogout: jest.fn() });
 
     // Wait for the createEncryptor promise to resolve and the ref to be populated.
     await act(async () => {
@@ -218,7 +224,7 @@ describe('MainScreen', () => {
     (createEncryptor as jest.Mock).mockRejectedValue(new Error('no key'));
     (parseCommand as jest.Mock).mockReturnValue({ kind: 'ok', value: 'GET_STATUS' });
 
-    render(<MainScreen token="tok" onLogout={jest.fn()} />);
+    renderMain({ token: 'tok', onLogout: jest.fn() });
 
     // Wait for the rejected createEncryptor promise to settle.
     await act(async () => {
@@ -243,7 +249,7 @@ describe('MainScreen', () => {
     (createEncryptor as jest.Mock).mockResolvedValue(encrypt);
     (parseCommand as jest.Mock).mockReturnValue({ kind: 'ok', value: 'GET_STATUS' });
 
-    render(<MainScreen token="tok" onLogout={jest.fn()} />);
+    renderMain({ token: 'tok', onLogout: jest.fn() });
 
     // Wait for createEncryptor to resolve and populate the ref.
     await act(async () => {
@@ -261,5 +267,48 @@ describe('MainScreen', () => {
 
     expect(stub.sendEncrypted).not.toHaveBeenCalled();
     expect(stub.send).toHaveBeenCalledWith('GET_STATUS');
+  });
+
+  it('hides the video and shows a stopped placeholder after STOP_VIDEO', async () => {
+    makeSocketStub();
+    (parseCommand as jest.Mock).mockReturnValue({ kind: 'ok', value: 'STOP_VIDEO' });
+
+    renderMain({ token: 'tok', onLogout: jest.fn() });
+    expect(screen.getByTestId('video-view')).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /command/i }), 'GET_STATUS');
+    await userEvent.click(screen.getByRole('button', { name: /send/i }));
+
+    expect(screen.queryByTestId('video-view')).not.toBeInTheDocument();
+    expect(screen.getByText(/video stopped/i)).toBeInTheDocument();
+  });
+
+  it('shows the video again after START_VIDEO', async () => {
+    makeSocketStub();
+    const parse = parseCommand as jest.Mock;
+
+    renderMain({ token: 'tok', onLogout: jest.fn() });
+
+    parse.mockReturnValue({ kind: 'ok', value: 'STOP_VIDEO' });
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /command/i }), 'GET_STATUS');
+    await userEvent.click(screen.getByRole('button', { name: /send/i }));
+    expect(screen.queryByTestId('video-view')).not.toBeInTheDocument();
+
+    parse.mockReturnValue({ kind: 'ok', value: 'START_VIDEO' });
+    await userEvent.click(screen.getByRole('button', { name: /send/i }));
+    expect(screen.getByTestId('video-view')).toBeInTheDocument();
+  });
+
+  it('logout button sends LOGOUT over the socket and calls onLogout', async () => {
+    const stub = makeSocketStub();
+    (parseCommand as jest.Mock).mockReturnValue({ kind: 'ok', value: 'GET_STATUS' });
+    const onLogout = jest.fn();
+
+    renderMain({ token: 'tok', onLogout });
+
+    await userEvent.click(screen.getByRole('button', { name: /logout/i }));
+
+    expect(stub.send).toHaveBeenCalledWith('LOGOUT');
+    expect(onLogout).toHaveBeenCalledTimes(1);
   });
 });

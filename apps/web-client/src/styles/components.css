@@ -193,6 +193,58 @@
 .console__input:focus { border-color: var(--c-primary); outline: none; }
 .console__send { padding: 0.7rem 1.6rem; }
 
+/* ---------- Nav bar ---------- */
+.navbar { justify-content: space-between; }
+.navbar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.navbar__link {
+  font-family: var(--font-head);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.9rem;
+  color: var(--c-primary);
+  text-decoration: none;
+  /* Smooth transition matches the rest of the interactive elements in the design. */
+  transition: color var(--duration-fast) var(--ease-out-expo);
+}
+.navbar__link:hover { color: var(--c-primary-strong); text-decoration: underline; }
+.navbar__link:focus-visible {
+  color: var(--c-primary-strong);
+  text-decoration: underline;
+  outline: 2px solid var(--c-primary);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+/* Hairline separator between navigation links and the Logout action — uses the
+   existing --c-border token so it reads as structure, not decoration. */
+.navbar__logout {
+  padding: 0.5rem 1.2rem;
+  font-size: 0.85rem;
+  margin-left: var(--space-2);
+  border-left: 1px solid var(--c-border);
+  padding-left: calc(var(--space-2) + 1.2rem);
+}
+.navbar__logout:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 3px;
+}
+
+/* ---------- Video stopped placeholder ---------- */
+.stage__stopped {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  color: var(--c-body);
+  font-family: var(--font-head);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 /* ---------- Docs page ---------- */
 .docs { max-width: var(--maxw-prose); }
 .docs__title { font-size: var(--fs-h1); margin-bottom: var(--space-4); }
