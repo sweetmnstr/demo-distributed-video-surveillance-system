@@ -1,0 +1,17 @@
+[
+  {
+    "login": "operator",
+    "passwordHash": "$2a$10$BAqFDfybKybrC9lGQ4zFv.XnYBhYArfhejhYllw6hHBispoPcqQYO",
+    "role": "operator"
+  },
+  {
+    "login": "viewer",
+    "passwordHash": "$2a$10$LByTym1DWzTr5I1aiPV0UuWbjzuG5axrUpf5nQtma7zjtwDuISMM.",
+    "role": "viewer"
+  },
+  {
+    "login": "admin",
+    "passwordHash": "$2a$10$y5CBpzo3b/kNJH/7EvZO..6s79SOcqkjdxe1IUhQaKpai67JnkVGm",
+    "role": "operator"
+  }
+]

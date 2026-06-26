@@ -1,7 +1,10 @@
 import Fastify, { FastifyInstance } from 'fastify';
-import { CommandCipher, LoginRequest } from '@vss/shared';
+import cors from '@fastify/cors';
+import { CommandCipher, LoginRequest, createLogger } from '@vss/shared';
 import { loginUser, LoginUserDeps } from '../use-cases/login-user';
 import { TokenVerifier } from '../ports/token-verifier';
+
+const log = createLogger('server-b');
 
 export interface HttpDeps {
   readonly loginDeps: LoginUserDeps;
@@ -11,12 +14,20 @@ export interface HttpDeps {
 
 export const buildHttpServer = (deps: HttpDeps): FastifyInstance => {
   const app = Fastify({ logger: false });
+  app.register(cors, { origin: true, methods: ['GET', 'POST', 'OPTIONS'] });
 
   app.post('/auth/login', async (request, reply) => {
     const body = LoginRequest.safeParse(request.body);
-    if (!body.success) return reply.code(400).send({ error: 'invalid request' });
+    if (!body.success) {
+      log.warn('login rejected: malformed request body');
+      return reply.code(400).send({ error: 'invalid request' });
+    }
     const result = await loginUser(body.data, deps.loginDeps);
-    if (result.kind === 'err') return reply.code(401).send({ error: result.error });
+    if (result.kind === 'err') {
+      log.warn(`login failed for "${body.data.login}": ${result.error}`);
+      return reply.code(401).send({ error: result.error });
+    }
+    log.info(`login succeeded for "${body.data.login}"`);
     return reply.send({ token: result.value.token });
   });
 

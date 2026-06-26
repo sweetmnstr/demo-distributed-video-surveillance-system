@@ -33,10 +33,19 @@ const MermaidDiagram = (): JSX.Element => {
 };
 
 export const DocsPage = (): JSX.Element => (
-  <main aria-labelledby="docs-heading">
-    <h1 id="docs-heading">Architecture &amp; Docs</h1>
+  <div className="app">
+    <header className="app-header">
+      <span className="brand">
+        <span className="brand__mark">FIXAR</span>
+        <span className="brand__sub">Surveillance</span>
+      </span>
+    </header>
+    <main className="app-main docs" aria-labelledby="docs-heading">
+      <h1 id="docs-heading" className="docs__title">
+        Architecture <span className="docs__title-accent">&amp; Docs</span>
+      </h1>
 
-    <section>
+    <section className="docs__section">
       <h2>Overview</h2>
       <p>
         Camera-sim publishes RTSP. Server A ingests it to fragmented MP4 and relays it over a
@@ -46,12 +55,12 @@ export const DocsPage = (): JSX.Element => (
       </p>
     </section>
 
-    <section>
+    <section className="docs__section">
       <h2>Architecture</h2>
       <MermaidDiagram />
     </section>
 
-    <section>
+    <section className="docs__section">
       <h2>Technologies</h2>
       <ul>
         <li>MSE + fragmented MP4 over WebSocket — ~1s latency, clean STOP_VIDEO.</li>
@@ -61,7 +70,7 @@ export const DocsPage = (): JSX.Element => (
       </ul>
     </section>
 
-    <section>
+    <section className="docs__section">
       <h2>Setup Instructions</h2>
       <ol>
         <li>
@@ -99,7 +108,7 @@ npm run dev   --workspace @vss/web-client`}
       </ol>
     </section>
 
-    <section>
+    <section className="docs__section">
       <h2>Architectural Decisions</h2>
       <dl>
         <dt>Streaming technology: MSE + fMP4 over WebSocket</dt>
@@ -136,13 +145,14 @@ npm run dev   --workspace @vss/web-client`}
       </dl>
     </section>
 
-    <section>
+    <section className="docs__section">
       <h2>Limitations</h2>
       <ul>
         <li>Windows containers are not used; Linux compose for dev/orchestration.</li>
         <li>Bonus D TPM uses software emulation in the container.</li>
         <li>A&harr;B commands are rejected (not queued) while the link is down.</li>
       </ul>
-    </section>
-  </main>
+      </section>
+    </main>
+  </div>
 );

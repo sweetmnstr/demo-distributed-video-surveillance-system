@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { ConsoleLine, outgoing, serverResponse, connectionError, appendLine } from '../../lib/console-log';
-import { parseCommand } from '@vss/shared';
+import { parseCommand, JwtClaims, Role } from '@vss/shared';
 import { openControlSocket } from '../../api/control-socket';
 import { createEncryptor } from '../../api/encrypt';
 import { Console } from '../console/Console';
 import { VideoView } from '../video/VideoView';
+
+const decodeRole = (token: string): Role => {
+  try {
+    const payload = JSON.parse(atob((token.split('.')[1] ?? '').replace(/-/g, '+').replace(/_/g, '/'))) as JwtClaims;
+    return payload.role;
+  } catch {
+    return 'viewer';
+  }
+};
 
 export const MainScreen = ({ token, onLogout }: { token: string; onLogout: () => void }): JSX.Element => {
   const [lines, setLines] = useState<readonly ConsoleLine[]>([]);
@@ -50,10 +59,23 @@ export const MainScreen = ({ token, onLogout }: { token: string; onLogout: () =>
   };
 
   return (
-    <main aria-labelledby="main-heading">
-      <h1 id="main-heading">Live Surveillance</h1>
-      <VideoView token={token} />
-      <Console lines={lines} onSubmit={handleSubmit} />
-    </main>
+    <div className="app">
+      <header className="app-header">
+        <span className="brand">
+          <span className="brand__mark">FIXAR</span>
+          <span className="brand__sub">Surveillance</span>
+        </span>
+      </header>
+      <main className="app-main main-screen" aria-labelledby="main-heading">
+        <h1 id="main-heading" className="main-screen__title">Live Surveillance</h1>
+        <div className="main-grid">
+          <section className="stage card" aria-label="Video stage">
+            <div className="stage__bar"><span className="stage__dot" /> Live camera</div>
+            <VideoView token={token} />
+          </section>
+          <Console lines={lines} role={decodeRole(token)} onSubmit={handleSubmit} />
+        </div>
+      </main>
+    </div>
   );
 };

@@ -17,14 +17,26 @@ export const LoginScreen = ({ onAuthenticated }: { onAuthenticated: (token: stri
   };
 
   return (
-    <main aria-labelledby="login-heading">
-      <h1 id="login-heading">Surveillance Login</h1>
-      <form onSubmit={submit}>
-        <label>Login <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" /></label>
-        <label>Password <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></label>
-        <button type="submit">Sign in</button>
-        {error && <p role="alert">{error}</p>}
-      </form>
-    </main>
+    <div className="login-page">
+      <main className="login-card card" aria-labelledby="login-heading">
+        <span className="brand brand--stack">
+          <span className="brand__mark">FIXAR</span>
+          <span className="brand__sub">Surveillance</span>
+        </span>
+        <h1 id="login-heading" className="login-card__title">Sign in</h1>
+        <form className="login-form" onSubmit={submit}>
+          <label className="field">
+            <span className="field__label">Login</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" />
+          </label>
+          <label className="field">
+            <span className="field__label">Password</span>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+          </label>
+          <button type="submit" className="btn btn--primary login-form__submit">Sign in</button>
+          {error && <p role="alert" className="alert">{error}</p>}
+        </form>
+      </main>
+    </div>
   );
 };

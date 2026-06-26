@@ -4,6 +4,19 @@
 MSE + fragmented MP4 over WebSocket. ~1s latency; STOP_VIDEO stops forwarding
 fragments while ffmpeg keeps running; single auth point on WS open.
 
+**RTSP topology.** The camera simulator is the RTSP **client** and pushes its
+stream; Server A is the RTSP **listener** (`-rtsp_flags listen` on the ffmpeg
+input). ffmpeg's RTSP *demuxer* reliably accepts an incoming connection in listen
+mode, whereas its *muxer* does not open a listening socket — so the listener role
+must live on Server A. Either process can start first: the camera supervisor and
+Server A's ingestor both reconnect with backoff.
+
+**Init-segment replay.** ffmpeg emits the fMP4 initialization segment (ftyp+moov)
+exactly once at stream start, but browsers connect later and would miss it, leaving
+MSE unable to decode (black screen). Server A runs the byte stream through a pure
+segmenter that caches the init segment and re-emits whole keyframe fragments; every
+new viewer receives the cached init segment before any fragment.
+
 ## Inter-server channel (A ↔ B)
 WebSocket, no REST, initiated by Server A, with capped exponential backoff,
 jitter, and heartbeat. While the link is down, commands are **rejected with a

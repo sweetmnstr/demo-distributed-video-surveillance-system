@@ -175,6 +175,23 @@ describe('attachVideo', () => {
     expect(FakeWS.last.sent).toContain('jwt');
   });
 
+  it('flushes fragments buffered before sourceopen once the SourceBuffer is ready', () => {
+    const video = makeVideoEl();
+    const stop = attachVideo(video, 'jwt');
+
+    // A fragment (e.g. the init segment) arrives before sourceopen → held in preBuffer.
+    const early = new Uint8Array([7, 7]);
+    FakeWS.last.emit('message', { data: early.buffer });
+
+    // sourceopen fires: the buffered fragment must be flushed into the SourceBuffer.
+    FakeMediaSource.last.emit('sourceopen');
+
+    expect(FakeSourceBuffer.last.appended).toHaveLength(1);
+    expect(FakeSourceBuffer.last.appended[0]).toEqual(early);
+
+    stop();
+  });
+
   it('updateend with an empty queue transitions back to idle without calling appendBuffer again', () => {
     const { stop } = openAll();
     const chunk = new Uint8Array([5]);

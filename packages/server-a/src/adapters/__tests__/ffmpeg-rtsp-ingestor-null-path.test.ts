@@ -8,9 +8,10 @@ jest.mock('node:child_process', () => ({ spawn: jest.fn() }));
 import { createFfmpegRtspIngestor } from '../ffmpeg-rtsp-ingestor';
 
 describe('ffmpeg-rtsp-ingestor — null ffmpegPath', () => {
+  // The guard fails fast at construction so a misconfigured environment surfaces
+  // immediately at wiring time rather than on the first start() call.
   it('throws a meaningful error when ffmpeg-static returns null', () => {
-    const ing = createFfmpegRtspIngestor('rtsp://x/camera');
-    expect(() => ing.start(() => undefined)).toThrow(
+    expect(() => createFfmpegRtspIngestor('rtsp://x/camera')).toThrow(
       'ffmpeg-static did not provide a binary path',
     );
   });

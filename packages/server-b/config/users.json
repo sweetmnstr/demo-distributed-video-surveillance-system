@@ -1,17 +1,17 @@
 [
   {
     "login": "operator",
-    "passwordHash": "$2a$10$D1Xnm5dUz8jKa/GE0hbA3.rFWv3CHyb8c4vsKr.E0yNqfViafXCm.",
+    "passwordHash": "$2a$10$gEDUUzB85yl1.hRTyITYQOgwag5NmR5tO9jWEAxPCC.KAy4NS.10W",
     "role": "operator"
   },
   {
     "login": "viewer",
-    "passwordHash": "$2a$10$9Ojr0YQyqp7TzXL/AYIgv.KGiYR4fefkJmSdiqrmebeBIrRuczM7K",
+    "passwordHash": "$2a$10$KNNWgMoIY3qKfuqC/M5KdewrcubTYG2WBSoryOmi1HmuEQ9TYgjbC",
     "role": "viewer"
   },
   {
     "login": "admin",
-    "passwordHash": "$2a$10$vCqOq6MbGuX63viHJfa1JeL/EiaI.TL7nFDthhkD/CKd3970AZ5ry",
+    "passwordHash": "$2a$10$XjWVCYGpZEYTB64b8naDLOovJLSkqvlquUz.I8AhX1MmcSE8tHMCy",
     "role": "operator"
   }
 ]

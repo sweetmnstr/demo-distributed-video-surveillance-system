@@ -1,0 +1,45 @@
+/* Design tokens — palette and type extracted from https://fixar.lv/ */
+:root {
+  /* Color */
+  --c-page: #fafafa;
+  --c-surface: #ffffff;
+  --c-primary: #607287;        /* steel-blue — buttons, accents */
+  --c-primary-strong: #4f5f70; /* primary hover */
+  --c-primary-ink: #ffffff;    /* text on primary */
+  --c-secondary: #5ca2b1;      /* teal */
+  --c-link: #0078a8;
+  --c-heading: #333333;
+  --c-body: #7c7b7b;
+  --c-border: #e6e6e6;
+  --c-danger: #c0392b;
+  --c-danger-bg: #fdecea;
+  --c-ok: #2e7d5b;
+
+  /* Typography */
+  --font-head: 'Roboto Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --font-body: 'Source Sans Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+  --fs-hero: clamp(2.25rem, 1.6rem + 3vw, 4.25rem);
+  --fs-h1: clamp(1.75rem, 1.3rem + 2vw, 2.75rem);
+  --fs-h2: clamp(1.3rem, 1.1rem + 1vw, 1.75rem);
+  --fs-body: clamp(1rem, 0.96rem + 0.2vw, 1.0625rem);
+  --fs-small: 0.875rem;
+
+  /* Shape & space */
+  --radius: 7px;
+  --radius-lg: 12px;
+  --shadow-card: 0 8px 24px rgba(40, 50, 65, 0.08);
+  --shadow-card-soft: 0 2px 8px rgba(40, 50, 65, 0.06);
+  --space-1: 0.5rem;
+  --space-2: 0.75rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2.5rem;
+  --space-6: 4rem;
+  --maxw-prose: 70ch;
+  --maxw-app: 1180px;
+
+  /* Motion */
+  --duration-fast: 150ms;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}

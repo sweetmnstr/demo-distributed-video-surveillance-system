@@ -1,0 +1,37 @@
+/* Base reset + element defaults consuming the design tokens. */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--c-page);
+  color: var(--c-body);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-head);
+  color: var(--c-heading);
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0 0 var(--space-3);
+}
+
+h1 { font-size: var(--fs-h1); }
+h2 { font-size: var(--fs-h2); }
+
+p { margin: 0 0 var(--space-3); }
+
+a { color: var(--c-link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+input, button { font: inherit; }
+
+:focus-visible { outline: 2px solid var(--c-secondary); outline-offset: 2px; }
+
+::selection { background: var(--c-secondary); color: #fff; }

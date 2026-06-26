@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { WebSocketServer } from 'ws';
-import type { CommandCipher } from '@vss/shared';
+import { type CommandCipher, createLogger } from '@vss/shared';
 import { loadNativeAddon, createNativeCryptoCipher } from '@vss/native-crypto';
 import { loadServerBConfig } from './config';
 import { createJsonUserRepo } from './adapters/json-user-repo';
@@ -33,6 +33,8 @@ const buildCipher = async (cfg: { cipherImpl: 'node' | 'native' | 'tpm'; private
   throw new Error(`cipher implementation '${cfg.cipherImpl}' is not available`);
 };
 
+const log = createLogger('server-b');
+
 const main = async (): Promise<void> => {
   const cfg = loadServerBConfig(process.env);
 
@@ -55,6 +57,7 @@ const main = async (): Promise<void> => {
     cipher,
   });
   await http.listen({ port: cfg.httpPort, host: '0.0.0.0' });
+  log.info(`HTTP on :${cfg.httpPort}, inter-server WS on :${cfg.interServerWsPort}, control WS on :${cfg.controlWsPort} (cipher=${cfg.cipherImpl})`);
 
   const controlWss = new WebSocketServer({ port: cfg.controlWsPort });
   startControlServer({

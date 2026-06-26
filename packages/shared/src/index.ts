@@ -6,4 +6,5 @@ export * from './domain/command-cipher';
 export * from './protocol/messages';
 export * from './auth/jwt';
 export * from './logging/hmac-log';
+export * from './logging/logger';
 export * from './util/backoff';

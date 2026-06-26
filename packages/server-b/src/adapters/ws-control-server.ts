@@ -1,9 +1,11 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import { ControlClientMessage, ControlServerMessage, Session, CommandCipher, Command } from '@vss/shared';
+import { ControlClientMessage, ControlServerMessage, Session, CommandCipher, Command, createLogger } from '@vss/shared';
 import { authenticateConnection, AuthenticateDeps } from '../use-cases/authenticate-connection';
 import { processCommand, ProcessCommandDeps } from '../use-cases/process-command';
 import { logout, LogoutDeps } from '../use-cases/logout';
 import { decryptCommand } from '../use-cases/decrypt-command';
+
+const log = createLogger('server-b');
 
 export interface ControlServerDeps {
   readonly wss: WebSocketServer;
@@ -18,11 +20,13 @@ const send = (socket: WebSocket, message: ControlServerMessage): void => socket.
 const routeCommand = async (command: Command, session: Session, socket: WebSocket, deps: ControlServerDeps): Promise<void> => {
   if (command === 'LOGOUT') {
     const reply = await logout(session, deps.logoutDeps);
+    log.info(`LOGOUT by ${session.login} (ok=${reply.ok})`);
     send(socket, { type: 'response', ok: reply.ok, text: reply.text });
     socket.close(1000);
     return;
   }
   const reply = await processCommand(command, session, deps.process);
+  log.info(`command ${command} by ${session.login} (${session.role}) ok=${reply.ok}: ${reply.text}`);
   send(socket, { type: 'response', ok: reply.ok, text: reply.text });
 };
 
@@ -45,8 +49,9 @@ export const startControlServer = (deps: ControlServerDeps): void => {
 
         if (msg.type === 'auth') {
           const result = await authenticateConnection(msg.token, deps.auth);
-          if (result.kind === 'err') { send(socket, { type: 'error', text: 'unauthorized' }); socket.close(1008); return; }
+          if (result.kind === 'err') { log.warn('control client auth rejected'); send(socket, { type: 'error', text: 'unauthorized' }); socket.close(1008); return; }
           session = result.value;
+          log.info(`control client authenticated: ${session.login} (${session.role})`);
           return send(socket, { type: 'response', ok: true, text: 'authenticated' });
         }
         if (!session) return send(socket, { type: 'error', text: 'not authenticated' });

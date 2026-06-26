@@ -1,6 +1,3 @@
-// Unit tests for components/console/Console.tsx
-// Covers: line rendering, empty-submit guard, onSubmit call, input cleared after submit.
-
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Console } from './Console';
@@ -15,7 +12,7 @@ const SAMPLE_LINES: readonly ConsoleLine[] = [
 
 describe('Console', () => {
   it('renders all provided console lines', () => {
-    render(<Console lines={SAMPLE_LINES} onSubmit={jest.fn()} />);
+    render(<Console lines={SAMPLE_LINES} role="operator" onSubmit={jest.fn()} />);
 
     expect(screen.getByText('> START_VIDEO')).toBeInTheDocument();
     expect(screen.getByText('< OK: video started')).toBeInTheDocument();
@@ -24,7 +21,7 @@ describe('Console', () => {
   });
 
   it('attaches the correct data-kind attribute to each line', () => {
-    const { container } = render(<Console lines={SAMPLE_LINES} onSubmit={jest.fn()} />);
+    const { container } = render(<Console lines={SAMPLE_LINES} role="operator" onSubmit={jest.fn()} />);
     const items = container.querySelectorAll('li');
 
     expect(items[0]).toHaveAttribute('data-kind', 'out');
@@ -33,35 +30,41 @@ describe('Console', () => {
     expect(items[3]).toHaveAttribute('data-kind', 'conn-error');
   });
 
-  it('calls onSubmit with the trimmed input and clears the field', async () => {
-    const onSubmit = jest.fn();
-    render(<Console lines={[]} onSubmit={onSubmit} />);
+  it('shows all four commands for operator role', () => {
+    render(<Console lines={[]} role="operator" onSubmit={jest.fn()} />);
+    const select = screen.getByRole('combobox', { name: /command/i }) as HTMLSelectElement;
+    const values = Array.from(select.options).map((o) => o.value);
+    expect(values).toEqual(['START_VIDEO', 'STOP_VIDEO', 'GET_STATUS', 'LOGOUT']);
+  });
 
-    const input = screen.getByRole('textbox', { name: /command/i });
-    await userEvent.type(input, '  GET_STATUS  ');
+  it('shows only GET_STATUS and LOGOUT for viewer role', () => {
+    render(<Console lines={[]} role="viewer" onSubmit={jest.fn()} />);
+    const select = screen.getByRole('combobox', { name: /command/i }) as HTMLSelectElement;
+    const values = Array.from(select.options).map((o) => o.value);
+    expect(values).toEqual(['GET_STATUS', 'LOGOUT']);
+  });
+
+  it('calls onSubmit with the currently selected command', async () => {
+    const onSubmit = jest.fn();
+    render(<Console lines={[]} role="operator" onSubmit={onSubmit} />);
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /command/i }), 'GET_STATUS');
     await userEvent.click(screen.getByRole('button', { name: /send/i }));
 
     expect(onSubmit).toHaveBeenCalledWith('GET_STATUS');
-    expect(input).toHaveValue('');
   });
 
-  it('does not call onSubmit when the input is blank or whitespace-only', async () => {
+  it('defaults to the first allowed command on submit without interaction', async () => {
     const onSubmit = jest.fn();
-    render(<Console lines={[]} onSubmit={onSubmit} />);
+    render(<Console lines={[]} role="operator" onSubmit={onSubmit} />);
 
-    // Submit without typing anything (empty string).
     await userEvent.click(screen.getByRole('button', { name: /send/i }));
-    expect(onSubmit).not.toHaveBeenCalled();
 
-    // Submit with whitespace only.
-    await userEvent.type(screen.getByRole('textbox', { name: /command/i }), '   ');
-    await userEvent.click(screen.getByRole('button', { name: /send/i }));
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledWith('START_VIDEO');
   });
 
   it('renders an empty list when no lines are provided', () => {
-    const { container } = render(<Console lines={[]} onSubmit={jest.fn()} />);
-    const items = container.querySelectorAll('li');
-    expect(items).toHaveLength(0);
+    const { container } = render(<Console lines={[]} role="operator" onSubmit={jest.fn()} />);
+    expect(container.querySelectorAll('li')).toHaveLength(0);
   });
 });

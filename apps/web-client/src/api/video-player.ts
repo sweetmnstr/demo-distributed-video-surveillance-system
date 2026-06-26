@@ -11,14 +11,20 @@ export const attachVideo = (video: HTMLVideoElement, token: string): () => void 
   video.src = URL.createObjectURL(mediaSource);
   let queue: AppendQueue = emptyQueue();
   let buffer: SourceBuffer | null = null;
+  // Fragments arriving before sourceopen (including the moov init box) are held
+  // here and flushed once the SourceBuffer is ready, preventing a race condition
+  // that would cause MSE to silently drop the initialization segment.
+  const preBuffer: Uint8Array<ArrayBuffer>[] = [];
   const socket = new WebSocket(WS_URL);
   socket.binaryType = 'arraybuffer';
 
   const pump = (chunk: Uint8Array<ArrayBuffer>): void => {
-    if (!buffer) return;
+    if (!buffer) {
+      preBuffer.push(chunk);
+      return;
+    }
     const step = enqueue(queue, chunk);
     queue = step.state;
-    // chunk is Uint8Array<ArrayBuffer> so step.append is safe for appendBuffer
     if (step.append) buffer.appendBuffer(step.append as Uint8Array<ArrayBuffer>);
   };
 
@@ -29,6 +35,8 @@ export const attachVideo = (video: HTMLVideoElement, token: string): () => void 
       queue = step.state;
       if (step.append && buffer) buffer.appendBuffer(step.append as Uint8Array<ArrayBuffer>);
     });
+    // Flush fragments buffered before sourceopen fired
+    for (const chunk of preBuffer.splice(0)) pump(chunk);
   });
 
   socket.addEventListener('open', () => socket.send(token));

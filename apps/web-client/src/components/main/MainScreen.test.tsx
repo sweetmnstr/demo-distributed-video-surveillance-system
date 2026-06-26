@@ -82,13 +82,24 @@ describe('MainScreen', () => {
     }));
   });
 
+  it('offers operator-only commands when the token encodes the operator role', () => {
+    makeSocketStub();
+    (parseCommand as jest.Mock).mockReturnValue({ kind: 'ok', value: 'GET_STATUS' });
+
+    // A token whose payload decodes to role=operator exercises decodeRole's success path.
+    const payload = btoa(JSON.stringify({ role: 'operator' }));
+    render(<MainScreen token={`header.${payload}.sig`} onLogout={jest.fn()} />);
+
+    expect(screen.getByRole('option', { name: 'START_VIDEO' })).toBeInTheDocument();
+  });
+
   it('adds an outgoing line and calls socket.send on a valid command', async () => {
     makeSocketStub();
     (parseCommand as jest.Mock).mockReturnValue({ kind: 'ok', value: 'START_VIDEO' });
 
     render(<MainScreen token="tok" onLogout={jest.fn()} />);
 
-    await userEvent.type(screen.getByRole('textbox', { name: /command/i }), 'start_video');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /command/i }), 'GET_STATUS');
     await userEvent.click(screen.getByRole('button', { name: /send/i }));
 
     expect(screen.getByText('> START_VIDEO')).toBeInTheDocument();
@@ -104,7 +115,7 @@ describe('MainScreen', () => {
 
     render(<MainScreen token="tok" onLogout={jest.fn()} />);
 
-    await userEvent.type(screen.getByRole('textbox', { name: /command/i }), 'nope');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /command/i }), 'GET_STATUS');
     await userEvent.click(screen.getByRole('button', { name: /send/i }));
 
     expect(screen.getByText('< ERROR: unknown command: NOPE')).toBeInTheDocument();
@@ -190,7 +201,7 @@ describe('MainScreen', () => {
       await Promise.resolve();
     });
 
-    await userEvent.type(screen.getByRole('textbox', { name: /command/i }), 'get_status');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /command/i }), 'GET_STATUS');
     await userEvent.click(screen.getByRole('button', { name: /send/i }));
 
     // Wait for the async handleSubmit to complete.
@@ -214,7 +225,7 @@ describe('MainScreen', () => {
       await Promise.resolve();
     });
 
-    await userEvent.type(screen.getByRole('textbox', { name: /command/i }), 'get_status');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /command/i }), 'GET_STATUS');
     await userEvent.click(screen.getByRole('button', { name: /send/i }));
 
     await act(async () => {
@@ -239,7 +250,7 @@ describe('MainScreen', () => {
       await Promise.resolve();
     });
 
-    await userEvent.type(screen.getByRole('textbox', { name: /command/i }), 'get_status');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /command/i }), 'GET_STATUS');
     await userEvent.click(screen.getByRole('button', { name: /send/i }));
 
     // Wait for the rejected encrypt() call and the catch fallback to settle.

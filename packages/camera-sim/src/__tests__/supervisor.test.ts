@@ -60,6 +60,21 @@ describe('startSupervisor', () => {
     expect(runner.started).toHaveLength(1);
   });
 
+  it('logs a start on launch and a warning with the backoff delay on exit', () => {
+    const runner = new FakeRunner();
+    const info: string[] = [];
+    const warn: string[] = [];
+    startSupervisor(runner, 'ffmpeg', ['-x'], { baseMs: 500, capMs: 30000 }, {
+      info: (m: string) => info.push(m),
+      warn: (m: string) => warn.push(m),
+    });
+
+    expect(info).toEqual(['camera ffmpeg starting']);
+
+    runner.processes[0].emitExit(1);
+    expect(warn).toEqual(['camera ffmpeg exited; restarting in 500ms']);
+  });
+
   it('stop() during backoff timer prevents delayed restart', () => {
     const runner = new FakeRunner();
     const stop = startSupervisor(runner, 'ffmpeg', ['-x'], { baseMs: 500, capMs: 30000 });

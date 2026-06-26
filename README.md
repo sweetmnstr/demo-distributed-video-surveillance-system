@@ -52,13 +52,15 @@ This is the primary way to run the system locally on Windows 11:
    ```
    This creates `config/users.json` with demo accounts.
 
-5. **Start each workspace** (in separate terminal windows):
+5. **Start each workspace** (in separate terminal windows). Server A owns the RTSP
+   listening socket, so start it before the camera; if you start them in another
+   order they will simply reconnect with backoff until both are up.
    ```bash
-   # Terminal 1 - Camera simulator (RTSP on 127.0.0.1:1111)
-   npm run start --workspace @vss/camera-sim
-
-   # Terminal 2 - Server A (Video server, WebSocket on 127.0.0.1:2222)
+   # Terminal 1 - Server A (Video server: RTSP listener on 127.0.0.1:1111, WebSocket on 127.0.0.1:2222)
    npm run start --workspace @vss/server-a
+
+   # Terminal 2 - Camera simulator (pushes RTSP to 127.0.0.1:1111)
+   npm run start --workspace @vss/camera-sim
 
    # Terminal 3 - Server B (Auth & control, HTTP on 127.0.0.1:3000, WebSocket on 127.0.0.1:3002)
    npm run start --workspace @vss/server-b
@@ -66,6 +68,9 @@ This is the primary way to run the system locally on Windows 11:
    # Terminal 4 - Web Client (dev server on 127.0.0.1:5173)
    npm run dev --workspace @vss/web-client
    ```
+
+   Each service logs structured lines (`<timestamp> [component] LEVEL message`) so
+   you can follow startup, camera/stream state, viewer connects, and commands.
 
 6. **Access the web client:**
    - Open http://127.0.0.1:5173 in your browser

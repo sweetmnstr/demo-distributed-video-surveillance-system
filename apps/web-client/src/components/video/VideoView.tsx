@@ -16,5 +16,5 @@ export const VideoView = ({ token }: { token: string }): JSX.Element => {
   useEffect(() => {
     return runAttachEffect(ref.current, token);
   }, [token]);
-  return <video ref={ref} autoPlay muted playsInline aria-label="Live camera" />;
+  return <video ref={ref} className="video-stream" autoPlay muted playsInline aria-label="Live camera" />;
 };
