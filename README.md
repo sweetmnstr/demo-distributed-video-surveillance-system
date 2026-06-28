@@ -151,9 +151,41 @@ In Docker, the `server-b` image installs the toolchain (`python3`, `make`, `g++`
 and compiles the addon during the build, so `CIPHER_IMPL=native` works inside the
 container as well — no extra host setup required.
 
-## TPM-backed cipher (Bonus D)
+## Windows TPM cipher backend (Bonus D)
 
-Enable with `CIPHER_IMPL=tpm`. On Linux the key is sealed in a **software-emulated
-TPM**; the private key is never exported (a unit test asserts the export attempt
-throws). The real Windows 11 path (Platform Crypto Provider / CNG, non-exportable
-key) is deferred to a Windows machine and selected automatically on `win32`.
+Enable with `CIPHER_IMPL=tpm`. Server B selects the device automatically:
+
+- **Windows (win32):** uses the real TPM 2.0 via the Windows CNG Platform Crypto
+  Provider (`MS_PLATFORM_CRYPTO_PROVIDER`). An RSA-2048 key is persisted inside the
+  TPM under `TPM_KEY_NAME` (default `vss-tpm-command-key`), non-exportable;
+  decryption happens in hardware via `NCryptDecrypt` (OAEP/SHA-256).
+- **Non-Windows or TPM unavailable:** falls back to a software-emulated sealed key
+  with a warning logged. CI (Linux) always uses the software path with no extra
+  configuration.
+
+### Windows prerequisites (hardware path)
+
+- Visual Studio Build Tools with the **Desktop development with C++** workload
+- Windows 10/11 SDK (provides `ncrypt.lib`)
+- node-gyp (`npm install -g node-gyp`)
+
+Build the native addon:
+
+```bash
+npm run build:native -w @vss/tpm-crypto
+```
+
+### Configuration
+
+| Variable       | Default               | Purpose                          |
+|----------------|-----------------------|----------------------------------|
+| `CIPHER_IMPL`  | `node`                | Set to `tpm` to enable TPM mode  |
+| `TPM_KEY_NAME` | `vss-tpm-command-key` | Name of the persisted TPM key    |
+
+> **BIOS/UEFI requirement:** The hardware path requires TPM 2.0 to be **enabled in
+> firmware**. If the TPM is disabled, initialization fails with `NTE_DEVICE_NOT_READY`
+> and the system falls back to the software device automatically (logged as a warning).
+
+On Linux / in Docker the key is sealed in the **software-emulated TPM** device (no
+native build required). The private key is never exported — `exportPrivateKey` throws
+and a unit test asserts this invariant.

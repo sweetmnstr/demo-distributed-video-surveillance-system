@@ -138,6 +138,19 @@ npm run dev   --workspace @vss/web-client`}
           Single lockfile, shared <code>@vss/shared</code> package for protocol types,
           JWT helpers, and logging — eliminates copy-paste drift between servers.
         </dd>
+
+        <dt>Cipher backend: <code>node</code> / <code>native</code> / <code>tpm</code></dt>
+        <dd>
+          Selected via <code>CIPHER_IMPL</code>. <strong>node</strong>: pure Node.js
+          RSA-OAEP (key files on disk). <strong>native</strong>: C++ N-API addon via
+          OpenSSL. <strong>tpm</strong>: on Windows, the real TPM 2.0 via the CNG
+          Platform Crypto Provider (<code>MS_PLATFORM_CRYPTO_PROVIDER</code>) — RSA-2048
+          key persisted inside the TPM, non-exportable, decryption in hardware
+          (<code>NCryptDecrypt</code>, OAEP/SHA-256); on non-Windows or when the TPM
+          is unavailable, falls back to a software-emulated sealed key automatically.
+          The key name is configurable via <code>TPM_KEY_NAME</code> (default{' '}
+          <code>vss-tpm-command-key</code>).
+        </dd>
       </dl>
     </section>
 
@@ -165,7 +178,12 @@ npm run dev   --workspace @vss/web-client`}
           Linux containers run on Windows 11 via Docker Desktop + WSL2; native Windows containers
           are intentionally not used (ffmpeg, Redis, and nginx lack reliable Windows-container images).
         </li>
-        <li>Bonus D TPM uses software emulation in the container.</li>
+        <li>
+          The <code>tpm</code> cipher backend uses the real Windows TPM 2.0 (CNG Platform Crypto
+          Provider, sealed non-exportable key) on Windows; it falls back to a software-emulated
+          sealed key on non-Windows or when the TPM addon is unavailable. The container stack
+          always uses the software path.
+        </li>
         <li>A&harr;B commands are rejected (not queued) while the link is down.</li>
       </ul>
       </section>

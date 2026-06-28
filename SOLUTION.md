@@ -81,11 +81,40 @@ C/C++ toolchain (`python3`, `make`, `g++`) and compiles the addon during the bui
 so `CIPHER_IMPL=native` runs inside the Linux container too.
 
 ## Bonus D — TPM
+
+### TpmDevice port and software device
 A `TpmDevice` port models a sealed key: decryption runs inside the device and the
 private key is non-exportable (enforced and unit-tested). The Linux container uses
-a software-emulated device; the Windows PCP/CNG hardware path sits behind the same
-port and is deferred to a Windows machine. The Windows device is the single
-documented exception to 100% coverage on Linux, since it cannot execute there.
+a software-emulated device behind the same `CommandCipher` port.
+
+### Native Windows TPM (PCP/CNG)
+The `tpm` cipher backend uses a real TPM 2.0 device on Windows via the Windows CNG
+Platform Crypto Provider (`MS_PLATFORM_CRYPTO_PROVIDER`). An RSA-2048 private key
+is created and persisted inside the TPM under the name configured by `TPM_KEY_NAME`
+(default `vss-tpm-command-key`). The key is opened if it already exists, or created
+and persisted if absent — it is never auto-deleted. The key's export policy is
+cleared (non-exportable); `exportPrivateKey()` throws at the TypeScript layer as
+well. Decryption (OAEP/SHA-256) is performed in hardware via `NCryptDecrypt`.
+
+**Implementation split.** A thin native addon (`packages/tpm-crypto/src/addon-tpm.cc`,
+built via node-gyp / `binding.gyp`, links `ncrypt.lib`) returns raw modulus/exponent
+bytes and handles `NCryptDecrypt`. All non-trivial logic — RSA modulus/exponent →
+SPKI PEM encoding and device wiring — lives in TypeScript and is 100% unit-tested
+with a mocked addon. The `.cc` source is excluded from coverage and verified by a
+Windows-gated round-trip integration test (`tpm-round-trip.int.test.ts`) that
+auto-skips on non-Windows or when the binary is absent.
+
+**Platform selection.** `CIPHER_IMPL=tpm` automatically selects the real Windows
+device on `win32`. On non-Windows, or if the TPM addon is unavailable at runtime,
+the system logs a warning and falls back to the software-emulated sealed key
+transparently. CI (Linux) always runs the software path without any configuration
+change.
+
+**Hardware prerequisite.** The hardware round-trip requires TPM 2.0 to be enabled
+in the system BIOS/UEFI. On a machine where the TPM is disabled, initialization
+fails with `NTE_DEVICE_NOT_READY` and the fallback to the software device is
+triggered automatically (with a warning logged). Enabling TPM 2.0 in firmware is
+therefore a prerequisite for the hardware path to be exercised.
 
 ## Test coverage policy
 All adapters and the web-client UI are tested to 100% coverage. Two categories are

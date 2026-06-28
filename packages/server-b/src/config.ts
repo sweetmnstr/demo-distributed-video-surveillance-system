@@ -30,6 +30,7 @@ const Schema = z.object({
   REDIS_URL: z.string().min(1),
   JWT_TTL_SECONDS: numeric,
   CIPHER_IMPL: z.enum(['node', 'native', 'tpm']).default('node'),
+  TPM_KEY_NAME: z.string().min(1).default('vss-tpm-command-key'),
 });
 
 export interface ServerBConfig {
@@ -44,6 +45,7 @@ export interface ServerBConfig {
   readonly redisUrl: string;
   readonly jwtTtlSeconds: number;
   readonly cipherImpl: 'node' | 'native' | 'tpm';
+  readonly tpmKeyName: string;
 }
 
 export const loadServerBConfig = (env: Record<string, string | undefined>): ServerBConfig => {
@@ -60,5 +62,6 @@ export const loadServerBConfig = (env: Record<string, string | undefined>): Serv
     redisUrl: parsed.REDIS_URL,
     jwtTtlSeconds: parsed.JWT_TTL_SECONDS,
     cipherImpl: parsed.CIPHER_IMPL,
+    tpmKeyName: parsed.TPM_KEY_NAME,
   };
 };

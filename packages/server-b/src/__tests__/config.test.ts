@@ -63,3 +63,12 @@ describe('loadServerBConfig — cipher selection', () => {
     expect(() => loadServerBConfig({ ...validEnv, CIPHER_IMPL: 'rot13' })).toThrow();
   });
 });
+
+describe('loadServerBConfig — TPM key name', () => {
+  it('defaults tpmKeyName to vss-tpm-command-key when TPM_KEY_NAME is absent', () => {
+    expect(loadServerBConfig(validEnv).tpmKeyName).toBe('vss-tpm-command-key');
+  });
+  it('honors an explicit TPM_KEY_NAME override', () => {
+    expect(loadServerBConfig({ ...validEnv, TPM_KEY_NAME: 'custom-key' }).tpmKeyName).toBe('custom-key');
+  });
+});
