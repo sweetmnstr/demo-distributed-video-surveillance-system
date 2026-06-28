@@ -1,0 +1,9 @@
+DejaVuSans.ttf — DejaVu Fonts 2.37
+https://dejavu-fonts.github.io/
+
+Licensed under the Bitstream Vera Fonts Copyright and the Arev Fonts License.
+Both are permissive, attribution-only licenses that allow redistribution with
+or without modification, provided this notice is kept. The fonts carry no
+restrictions on use in open-source or commercial products.
+
+Full license text: https://dejavu-fonts.github.io/License.html

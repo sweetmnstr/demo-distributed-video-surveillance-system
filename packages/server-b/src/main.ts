@@ -1,7 +1,5 @@
-import { readFile } from 'node:fs/promises';
 import { WebSocketServer } from 'ws';
-import type { CommandCipher } from '@vss/shared';
-import { loadNativeAddon, createNativeCryptoCipher } from '@vss/native-crypto';
+import { createLogger } from '@vss/shared';
 import { loadServerBConfig } from './config';
 import { createJsonUserRepo } from './adapters/json-user-repo';
 import { createBcryptHasher } from './adapters/bcrypt-hasher';
@@ -13,25 +11,9 @@ import { createUuidIdGenerator } from './adapters/uuid-id-generator';
 import { createWsCommandForwarder } from './adapters/ws-command-forwarder';
 import { buildHttpServer } from './adapters/fastify-http';
 import { startControlServer } from './adapters/ws-control-server';
-import { createNodeCryptoCipher } from './crypto/node-cipher';
-import { createSoftwareTpmDevice, createTpmCipher } from '@vss/tpm-crypto';
+import { buildCipher } from './crypto/build-cipher';
 
-const buildCipher = async (cfg: { cipherImpl: 'node' | 'native' | 'tpm'; privateKeyPath: string; publicKeyPath: string }): Promise<CommandCipher> => {
-  if (cfg.cipherImpl === 'node') {
-    const privatePem = await readFile(cfg.privateKeyPath, 'utf8');
-    const publicPem = await readFile(cfg.publicKeyPath, 'utf8');
-    return createNodeCryptoCipher(privatePem, publicPem);
-  }
-  if (cfg.cipherImpl === 'native') {
-    const addon = loadNativeAddon();
-    await addon.generateKeyPair();
-    return createNativeCryptoCipher(addon);
-  }
-  if (cfg.cipherImpl === 'tpm') {
-    return createTpmCipher(createSoftwareTpmDevice());
-  }
-  throw new Error(`cipher implementation '${cfg.cipherImpl}' is not available`);
-};
+const log = createLogger('server-b');
 
 const main = async (): Promise<void> => {
   const cfg = loadServerBConfig(process.env);
@@ -41,20 +23,30 @@ const main = async (): Promise<void> => {
   const issuer = await createJoseTokenIssuer(cfg.privateKeyPath, cfg.jwtTtlSeconds);
   const verifier = await createJoseTokenVerifier(cfg.publicKeyPath);
   const sessions = createRedisSessionStore(cfg.redisUrl);
-  const audit = createHmacAuditLog(cfg.commandsLogPath, cfg.hmacSecret);
+  const audit = createHmacAuditLog(cfg.commandsLogPath, cfg.hmacSecret, log);
   const ids = createUuidIdGenerator();
 
   const interServerWss = new WebSocketServer({ port: cfg.interServerWsPort });
   const forwarder = createWsCommandForwarder({ wss: interServerWss });
 
-  const cipher = await buildCipher(cfg);
+  const cipher = await buildCipher(
+    {
+      cipherImpl: cfg.cipherImpl,
+      privateKeyPath: cfg.privateKeyPath,
+      publicKeyPath: cfg.publicKeyPath,
+      tpmKeyName: cfg.tpmKeyName,
+    },
+    { log },
+  );
 
   const http = buildHttpServer({
     loginDeps: { users, hasher, issuer, sessions, ids, ttlSeconds: cfg.jwtTtlSeconds },
     verifier,
     cipher,
+    audit,
   });
   await http.listen({ port: cfg.httpPort, host: '0.0.0.0' });
+  log.info(`HTTP on :${cfg.httpPort}, inter-server WS on :${cfg.interServerWsPort}, control WS on :${cfg.controlWsPort} (cipher=${cfg.cipherImpl})`);
 
   const controlWss = new WebSocketServer({ port: cfg.controlWsPort });
   startControlServer({

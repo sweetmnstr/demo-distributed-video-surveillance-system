@@ -5,6 +5,7 @@ const fakeChild = () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only helper; no domain type needed
   const child: any = new EventEmitter();
   child.stdout = new EventEmitter();
+  child.stderr = new EventEmitter();
   child.kill = jest.fn();
   return child;
 };
@@ -41,6 +42,21 @@ describe('ffmpeg-rtsp-ingestor', () => {
       expect(args).toContain('pipe:1');
     });
 
+    // Server A owns the RTSP listening socket: the camera connects to it and
+    // pushes. ffmpeg's RTSP *demuxer* reliably accepts an incoming connection
+    // in listen mode, unlike the muxer — this is the working topology.
+    it('listens for the camera push via -rtsp_flags listen on the input', () => {
+      const child = fakeChild();
+      spawnMock.mockReturnValue(child);
+
+      createFfmpegRtspIngestor('rtsp://x/camera').start(() => undefined);
+
+      const [, args] = spawnMock.mock.calls[0] as [string, string[]];
+      expect(args.slice(0, args.indexOf('-i'))).toEqual(
+        expect.arrayContaining(['-rtsp_flags', 'listen']),
+      );
+    });
+
     it('forwards stdout data chunks to the onFragment callback', () => {
       const child = fakeChild();
       spawnMock.mockReturnValue(child);
@@ -70,6 +86,83 @@ describe('ffmpeg-rtsp-ingestor', () => {
     it('stop() before start() does not throw', () => {
       const ing = createFfmpegRtspIngestor('rtsp://x/camera');
       expect(() => ing.stop()).not.toThrow();
+    });
+  });
+
+  describe('resilience (stderr + reconnect)', () => {
+    let writeSpy: jest.SpiedFunction<typeof process.stderr.write>;
+
+    beforeEach(() => {
+      writeSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    });
+
+    afterEach(() => {
+      writeSpy.mockRestore();
+      jest.useRealTimers();
+    });
+
+    it('forwards ffmpeg stderr output with a prefix', () => {
+      const child = fakeChild();
+      spawnMock.mockReturnValue(child);
+
+      createFfmpegRtspIngestor('rtsp://x/camera').start(() => undefined);
+      child.stderr.emit('data', Buffer.from('connection failed'));
+
+      expect(writeSpy).toHaveBeenCalledWith('[ffmpeg-ingest] connection failed');
+    });
+
+    it('respawns ffmpeg after an unexpected exit', () => {
+      jest.useFakeTimers();
+      const child = fakeChild();
+      spawnMock.mockReturnValue(child);
+
+      createFfmpegRtspIngestor('rtsp://x/camera').start(() => undefined);
+      expect(spawnMock).toHaveBeenCalledTimes(1);
+
+      child.emit('exit', 1);
+      expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('exited (1)'));
+
+      jest.advanceTimersByTime(2_000);
+      expect(spawnMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('labels a signal-terminated exit when the code is null', () => {
+      jest.useFakeTimers();
+      const child = fakeChild();
+      spawnMock.mockReturnValue(child);
+
+      createFfmpegRtspIngestor('rtsp://x/camera').start(() => undefined);
+      child.emit('exit', null);
+
+      expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('exited (signal)'));
+    });
+
+    it('aborts a pending reconnect when stop() is called before the timer fires', () => {
+      jest.useFakeTimers();
+      const child = fakeChild();
+      spawnMock.mockReturnValue(child);
+
+      const ing = createFfmpegRtspIngestor('rtsp://x/camera');
+      ing.start(() => undefined);
+      child.emit('exit', 1); // schedules a reconnect
+      ing.stop(); // ...which must be cancelled by stop()
+
+      jest.advanceTimersByTime(2_000);
+      expect(spawnMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not respawn after stop()', () => {
+      jest.useFakeTimers();
+      const child = fakeChild();
+      spawnMock.mockReturnValue(child);
+
+      const ing = createFfmpegRtspIngestor('rtsp://x/camera');
+      ing.start(() => undefined);
+      ing.stop();
+      child.emit('exit', null);
+
+      jest.advanceTimersByTime(2_000);
+      expect(spawnMock).toHaveBeenCalledTimes(1);
     });
   });
 

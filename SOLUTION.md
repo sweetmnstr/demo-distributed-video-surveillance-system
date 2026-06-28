@@ -4,6 +4,19 @@
 MSE + fragmented MP4 over WebSocket. ~1s latency; STOP_VIDEO stops forwarding
 fragments while ffmpeg keeps running; single auth point on WS open.
 
+**RTSP topology.** The camera simulator is the RTSP **client** and pushes its
+stream; Server A is the RTSP **listener** (`-rtsp_flags listen` on the ffmpeg
+input). ffmpeg's RTSP *demuxer* reliably accepts an incoming connection in listen
+mode, whereas its *muxer* does not open a listening socket — so the listener role
+must live on Server A. Either process can start first: the camera supervisor and
+Server A's ingestor both reconnect with backoff.
+
+**Init-segment replay.** ffmpeg emits the fMP4 initialization segment (ftyp+moov)
+exactly once at stream start, but browsers connect later and would miss it, leaving
+MSE unable to decode (black screen). Server A runs the byte stream through a pure
+segmenter that caches the init segment and re-emits whole keyframe fragments; every
+new viewer receives the cached init segment before any fragment.
+
 ## Inter-server channel (A ↔ B)
 WebSocket, no REST, initiated by Server A, with capped exponential backoff,
 jitter, and heartbeat. While the link is down, commands are **rejected with a
@@ -18,6 +31,11 @@ verification, not URL hiding.
 Redis `session:{jti}` with a 1h TTL matching the JWT. LOGOUT deletes the key, so
 Server A's next check rejects the video WS.
 
+The web client persists the JWT in `localStorage` so a reload keeps the session.
+This trades the previous in-memory-only hardening (unreadable by XSS) for
+persistence, which is acceptable for this prototype; an expired or malformed token
+is discarded on load and the `jti` remains revocable server-side via LOGOUT.
+
 ## Tamper-evident log
 Append-only `commands.log` with an HMAC-SHA256 chain (`prevHash` links entries).
 A middle entry cannot be altered without recomputing the tail, and the secret is
@@ -28,11 +46,21 @@ Pure use-cases driven through ports, unit-tested to 100% with mocked ports; IO
 adapters verified by integration tests (in-process `ws`, `ffmpeg-static`) and
 Playwright E2E against the compose stack.
 
+## Camera overlay font — bundled DejaVuSans
+The camera simulator overlays a timestamp on the RTSP stream via ffmpeg's
+`drawtext` filter. To keep the image self-contained and avoid relying on the
+host OS, **DejaVuSans.ttf v2.37** is shipped at
+`packages/camera-sim/assets/DejaVuSans.ttf`. The font is released under the
+permissive Bitstream Vera / Arev license (free redistribution permitted); see
+`packages/camera-sim/assets/LICENSE-DejaVuSans.txt`.
+
+`resolveFontPath()` in `font.ts` uses precedence **env override → bundled font →
+Windows Arial fallback**. Now that the bundled font is present, the Arial
+fallback is never reached on a clean checkout.
+
+Source: https://sourceforge.net/projects/dejavu/files/dejavu/2.37/dejavu-fonts-ttf-2.37.tar.bz2/download
+
 ## Limitations
-- Windows containers are not used; dev/orchestration runs on Linux containers.
-  Native Windows 11 run is documented in the README.
-- Bonus D real TPM (Windows PCP/CNG) does not run in a Linux container; container
-  delivery uses software emulation behind the `CommandCipher` port.
 - A↔B commands are rejected (not queued) while the inter-server channel is down.
 
 ## Bonus C — native addon
@@ -43,11 +71,40 @@ bundled OpenSSL headers — no external OpenSSL install. The JS wrapper is unit
 surface and the integration coverage.
 
 ## Bonus D — TPM
+
+### TpmDevice port and software device
 A `TpmDevice` port models a sealed key: decryption runs inside the device and the
-private key is non-exportable (enforced and unit-tested). The Linux container uses
-a software-emulated device; the Windows PCP/CNG hardware path sits behind the same
-port and is deferred to a Windows machine. The Windows device is the single
-documented exception to 100% coverage on Linux, since it cannot execute there.
+private key is non-exportable (enforced and unit-tested). Non-Windows hosts use
+a software-emulated device behind the same `CommandCipher` port.
+
+### Native Windows TPM (PCP/CNG)
+The `tpm` cipher backend uses a real TPM 2.0 device on Windows via the Windows CNG
+Platform Crypto Provider (`MS_PLATFORM_CRYPTO_PROVIDER`). An RSA-2048 private key
+is created and persisted inside the TPM under the name configured by `TPM_KEY_NAME`
+(default `vss-tpm-command-key`). The key is opened if it already exists, or created
+and persisted if absent — it is never auto-deleted. The key's export policy is
+cleared (non-exportable); `exportPrivateKey()` throws at the TypeScript layer as
+well. Decryption (OAEP/SHA-256) is performed in hardware via `NCryptDecrypt`.
+
+**Implementation split.** A thin native addon (`packages/tpm-crypto/src/addon-tpm.cc`,
+built via node-gyp / `binding.gyp`, links `ncrypt.lib`) returns raw modulus/exponent
+bytes and handles `NCryptDecrypt`. All non-trivial logic — RSA modulus/exponent →
+SPKI PEM encoding and device wiring — lives in TypeScript and is 100% unit-tested
+with a mocked addon. The `.cc` source is excluded from coverage and verified by a
+Windows-gated round-trip integration test (`tpm-round-trip.int.test.ts`) that
+auto-skips on non-Windows or when the binary is absent.
+
+**Platform selection.** `CIPHER_IMPL=tpm` automatically selects the real Windows
+device on `win32`. On non-Windows, or if the TPM addon is unavailable at runtime,
+the system logs a warning and falls back to the software-emulated sealed key
+transparently. CI and non-Windows hosts always run the software path without any configuration
+change.
+
+**Hardware prerequisite.** The hardware round-trip requires TPM 2.0 to be enabled
+in the system BIOS/UEFI. On a machine where the TPM is disabled, initialization
+fails with `NTE_DEVICE_NOT_READY` and the fallback to the software device is
+triggered automatically (with a warning logged). Enabling TPM 2.0 in firmware is
+therefore a prerequisite for the hardware path to be exercised.
 
 ## Test coverage policy
 All adapters and the web-client UI are tested to 100% coverage. Two categories are

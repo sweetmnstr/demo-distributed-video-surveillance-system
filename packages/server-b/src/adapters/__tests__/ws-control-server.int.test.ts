@@ -253,6 +253,56 @@ describe('ws-control-server (integration)', () => {
   });
 
   // -------------------------------------------------------------------------
+  // Branch: audit — AUTH accepted
+  // -------------------------------------------------------------------------
+  it('records AUTH <login> accepted in the audit log on successful authentication', async () => {
+    const auditEntries: Array<{ user: string; message: string }> = [];
+    const capturingAudit: AuditLog = {
+      append: async (user, message) => { auditEntries.push({ user, message }); },
+    };
+
+    startControlServer({
+      wss,
+      auth: { verifier: makeVerifier('good'), sessions: makeSessionStore() },
+      process: { audit: capturingAudit, forwarder: makeForwarder() },
+      logoutDeps: { sessions: makeSessionStore(), audit: makeAuditLog() },
+      cipher: makeCipher(),
+    });
+
+    const ws = await openClient(port);
+    ws.send(JSON.stringify({ type: 'auth', token: 'good' }));
+    await next(ws); // consume auth reply
+    ws.close();
+
+    expect(auditEntries).toContainEqual({ user: 'admin', message: 'AUTH admin accepted' });
+  });
+
+  // -------------------------------------------------------------------------
+  // Branch: audit — AUTH rejected
+  // -------------------------------------------------------------------------
+  it('records AUTH rejected in the audit log when authentication fails', async () => {
+    const auditEntries: Array<{ user: string; message: string }> = [];
+    const capturingAudit: AuditLog = {
+      append: async (user, message) => { auditEntries.push({ user, message }); },
+    };
+
+    startControlServer({
+      wss,
+      auth: { verifier: makeVerifier('good'), sessions: makeSessionStore() },
+      process: { audit: capturingAudit, forwarder: makeForwarder() },
+      logoutDeps: { sessions: makeSessionStore(), audit: makeAuditLog() },
+      cipher: makeCipher(),
+    });
+
+    const ws = await openClient(port);
+    ws.send(JSON.stringify({ type: 'auth', token: 'bad-token' }));
+    await next(ws); // consume error reply
+    await new Promise<void>((resolve) => ws.on('close', () => resolve()));
+
+    expect(auditEntries).toContainEqual({ user: 'unknown', message: 'AUTH rejected' });
+  });
+
+  // -------------------------------------------------------------------------
   // Branch: catch → "internal error" (outer try-catch in ws handler)
   //
   // The message handler is `async` with a top-level try-catch. It awaits

@@ -78,6 +78,50 @@ describe('ws-video-fanout (integration)', () => {
     await new Promise<void>((r) => wss.close(() => r()));
   });
 
+  it('replays the cached init segment to a new client before any fragment', async () => {
+    const wss = new WebSocketServer({ port: 0 });
+    const { port } = wss.address() as AddressInfo;
+    const fanout = createWsVideoFanout({ wss, authorize, onClientChange: () => undefined });
+
+    const initSegment = Buffer.from([0xde, 0xad, 0xbe, 0xef]);
+    fanout.setInitSegment(initSegment);
+
+    const ws = await openSocket(port);
+    const incoming = collectMessages(ws, 2);
+    ws.send(VALID_TOKEN);
+    await pause(60);
+
+    const fragment = Buffer.from([0x00, 0x01]);
+    fanout.broadcast(fragment);
+
+    const [first, second] = await incoming;
+    expect(first).toEqual(initSegment);
+    expect(second).toEqual(fragment);
+
+    ws.close();
+    await new Promise<void>((r) => wss.close(() => r()));
+  });
+
+  it('replays the init segment to clients already connected when it appears', async () => {
+    const wss = new WebSocketServer({ port: 0 });
+    const { port } = wss.address() as AddressInfo;
+    const fanout = createWsVideoFanout({ wss, authorize, onClientChange: () => undefined });
+
+    const ws = await openSocket(port);
+    const incoming = collectMessages(ws, 1);
+    ws.send(VALID_TOKEN);
+    await pause(60);
+
+    const initSegment = Buffer.from([0x01, 0x02, 0x03, 0x04]);
+    fanout.setInitSegment(initSegment);
+
+    const [first] = await incoming;
+    expect(first).toEqual(initSegment);
+
+    ws.close();
+    await new Promise<void>((r) => wss.close(() => r()));
+  });
+
   it('closes unauthorized clients with close code 1008', async () => {
     const wss = new WebSocketServer({ port: 0 });
     const { port } = wss.address() as AddressInfo;

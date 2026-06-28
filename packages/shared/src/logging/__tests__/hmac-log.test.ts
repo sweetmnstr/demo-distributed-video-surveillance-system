@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { appendEntry, verifyChain, LogEntry } from '../hmac-log';
@@ -114,6 +114,23 @@ describe('HMAC append-only log', () => {
     const result = await appendEntry(file, SECRET, { user: 'admin', message: 'test' });
     expect(isErr(result)).toBe(true);
     if (isErr(result)) expect(result.error).toBe('append failed');
+  });
+
+  it('creates the parent directory if it does not exist and writes the entry', async () => {
+    // Point at a deeply nested path whose parent dirs do not yet exist.
+    const root = join(tmpdir(), `vss-mkdir-test-${Date.now()}`);
+    const file = join(root, 'nested', 'sub', 'commands.log');
+    try {
+      const result = await appendEntry(file, SECRET, { user: 'admin', message: 'START_VIDEO' });
+      expect(isOk(result)).toBe(true);
+      const content = readFileSync(file, 'utf8').trimEnd();
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      expect(parsed['user']).toBe('admin');
+      expect(parsed['message']).toBe('START_VIDEO');
+      expect(parsed['prevHash']).toBe('GENESIS');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

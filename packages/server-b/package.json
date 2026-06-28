@@ -5,21 +5,22 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "jest",
-    "start": "node dist/main.js",
-    "seed:users": "node scripts/seed-users.mjs"
+    "start": "node --env-file=../../.env dist/main.js",
+    "seed:users": "node --env-file=../../.env scripts/seed-users.mjs"
   },
   "dependencies": {
-    "@vss/shared": "*",
+    "@fastify/cors": "^9.0.1",
     "@vss/native-crypto": "*",
+    "@vss/shared": "*",
     "@vss/tpm-crypto": "*",
-    "fastify": "^4.28.0",
-    "ws": "^8.18.0",
-    "ioredis": "^5.4.1",
     "bcryptjs": "^2.4.3",
+    "fastify": "^4.28.0",
+    "ioredis": "^5.4.1",
+    "ws": "^8.18.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@types/ws": "^8.5.10",
-    "@types/bcryptjs": "^2.4.6"
+    "@types/bcryptjs": "^2.4.6",
+    "@types/ws": "^8.5.10"
   }
 }

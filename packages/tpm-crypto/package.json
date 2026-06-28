@@ -5,10 +5,19 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "install": "node-gyp rebuild",
     "build": "tsc -p tsconfig.json",
+    "build:native": "node-gyp configure build",
+    "pretest": "node -e \"process.exit(0)\"",
     "test": "jest"
   },
   "dependencies": {
-    "@vss/shared": "*"
+    "@vss/shared": "*",
+    "bindings": "^1.5.0",
+    "node-addon-api": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/bindings": "^1.5.5",
+    "node-gyp": "^10.2.0"
   }
 }

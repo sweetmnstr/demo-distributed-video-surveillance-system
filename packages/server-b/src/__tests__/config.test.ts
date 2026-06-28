@@ -1,3 +1,4 @@
+import { isAbsolute, resolve } from 'node:path';
 import { loadServerBConfig } from '../config';
 
 const validEnv = {
@@ -12,6 +13,9 @@ const validEnv = {
   REDIS_URL: 'redis://127.0.0.1:6379',
   JWT_TTL_SECONDS: '3600',
 };
+
+// __dirname here is packages/server-b/src/__tests__; repo root is 4 levels up
+const REPO_ROOT = resolve(__dirname, '../../../..');
 
 describe('loadServerBConfig', () => {
   it('parses a complete env into typed config', () => {
@@ -29,6 +33,22 @@ describe('loadServerBConfig', () => {
   });
 });
 
+describe('loadServerBConfig — path resolution', () => {
+  it('resolves a relative commandsLogPath against the repo root, not cwd', () => {
+    const cfg = loadServerBConfig({ ...validEnv, COMMANDS_LOG_PATH: 'config/commands.log' });
+    const expected = resolve(REPO_ROOT, 'config/commands.log');
+    expect(cfg.commandsLogPath).toBe(expected);
+  });
+
+  it('passes an absolute commandsLogPath through unchanged', () => {
+    // Construct a platform-safe absolute path from __dirname so it is
+    // genuinely absolute on both Windows and POSIX.
+    const absPath = resolve(__dirname, 'absolute-commands.log');
+    const cfg = loadServerBConfig({ ...validEnv, COMMANDS_LOG_PATH: absPath });
+    expect(cfg.commandsLogPath).toBe(absPath);
+  });
+});
+
 describe('loadServerBConfig — cipher selection', () => {
   it('defaults cipherImpl to node when CIPHER_IMPL is absent', () => {
     expect(loadServerBConfig(validEnv).cipherImpl).toBe('node');
@@ -41,5 +61,14 @@ describe('loadServerBConfig — cipher selection', () => {
   });
   it('rejects an unknown cipher implementation', () => {
     expect(() => loadServerBConfig({ ...validEnv, CIPHER_IMPL: 'rot13' })).toThrow();
+  });
+});
+
+describe('loadServerBConfig — TPM key name', () => {
+  it('defaults tpmKeyName to vss-tpm-command-key when TPM_KEY_NAME is absent', () => {
+    expect(loadServerBConfig(validEnv).tpmKeyName).toBe('vss-tpm-command-key');
+  });
+  it('honors an explicit TPM_KEY_NAME override', () => {
+    expect(loadServerBConfig({ ...validEnv, TPM_KEY_NAME: 'custom-key' }).tpmKeyName).toBe('custom-key');
   });
 });

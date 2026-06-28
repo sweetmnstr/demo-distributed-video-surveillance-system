@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { resolve } from 'node:path';
 
 // Client-facing service URLs come from Vite env (VITE_*) with localhost
 // fallbacks; plan 06 supplies the compose values at build time.
@@ -14,6 +15,11 @@ export default defineConfig(({ mode }) => {
   return {
     define: processEnvDefines,
     plugins: [react()],
+    resolve: {
+      alias: {
+        '@vss/shared': resolve(__dirname, '../../packages/shared/src/browser.ts'),
+      },
+    },
     server: { port: 5173 },
     build: {
       outDir: 'dist',

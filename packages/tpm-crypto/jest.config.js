@@ -6,7 +6,7 @@ module.exports = {
     'src/**/*.ts',
     '!src/**/*.test.ts',
     '!src/tpm-device.ts',
-    '!src/windows-tpm-device.ts',
+    '!src/tpm-native.ts',   // thin bindings() loader; verified via Windows round-trip
     '!src/index.ts',
   ],
 };

@@ -1,0 +1,7 @@
+flowchart LR
+  Cam[Camera-sim RTSP] -->|RTSP 1111| A[Server A]
+  A -->|fMP4 over WS 2222| W[Web Client]
+  W -->|login + commands WS 3002| B[Server B]
+  B -->|control WS 3001 no REST| A
+  B <-->|sessions| R[(Redis)]
+  A <-->|jti revocation| R

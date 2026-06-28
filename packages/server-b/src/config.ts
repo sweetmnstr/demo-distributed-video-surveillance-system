@@ -1,4 +1,20 @@
+import { isAbsolute, resolve } from 'node:path';
 import { z } from 'zod';
+
+// config.ts is one directory below packages/server-b in both source layout
+// (src/) and compiled layout (dist/), so three levels up reaches the repo root.
+const REPO_ROOT = resolve(__dirname, '../../..');
+
+/**
+ * Resolves a `COMMANDS_LOG_PATH` value to an absolute path.
+ *
+ * - Absolute paths are returned as-is so that production deployments can
+ *   supply a fully-qualified path without any rewriting.
+ * - Relative paths are anchored to the repository root so that the resolved
+ *   path is the same regardless of the process working directory.
+ */
+const resolveLogPath = (raw: string): string =>
+  isAbsolute(raw) ? raw : resolve(REPO_ROOT, raw);
 
 const numeric = z.string().regex(/^\d+$/, 'must be a positive integer').transform(Number);
 
@@ -14,6 +30,7 @@ const Schema = z.object({
   REDIS_URL: z.string().min(1),
   JWT_TTL_SECONDS: numeric,
   CIPHER_IMPL: z.enum(['node', 'native', 'tpm']).default('node'),
+  TPM_KEY_NAME: z.string().min(1).default('vss-tpm-command-key'),
 });
 
 export interface ServerBConfig {
@@ -28,6 +45,7 @@ export interface ServerBConfig {
   readonly redisUrl: string;
   readonly jwtTtlSeconds: number;
   readonly cipherImpl: 'node' | 'native' | 'tpm';
+  readonly tpmKeyName: string;
 }
 
 export const loadServerBConfig = (env: Record<string, string | undefined>): ServerBConfig => {
@@ -39,10 +57,11 @@ export const loadServerBConfig = (env: Record<string, string | undefined>): Serv
     privateKeyPath: parsed.PRIVATE_KEY_PATH,
     publicKeyPath: parsed.PUBLIC_KEY_PATH,
     usersPath: parsed.USERS_PATH,
-    commandsLogPath: parsed.COMMANDS_LOG_PATH,
+    commandsLogPath: resolveLogPath(parsed.COMMANDS_LOG_PATH),
     hmacSecret: parsed.HMAC_SECRET,
     redisUrl: parsed.REDIS_URL,
     jwtTtlSeconds: parsed.JWT_TTL_SECONDS,
     cipherImpl: parsed.CIPHER_IMPL,
+    tpmKeyName: parsed.TPM_KEY_NAME,
   };
 };

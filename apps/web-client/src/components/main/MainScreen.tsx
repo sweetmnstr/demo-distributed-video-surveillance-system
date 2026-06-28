@@ -1,23 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
 import { ConsoleLine, outgoing, serverResponse, connectionError, appendLine } from '../../lib/console-log';
-import { parseCommand } from '@vss/shared';
+import { parseCommand, JwtClaims, Role } from '@vss/shared';
 import { openControlSocket } from '../../api/control-socket';
 import { createEncryptor } from '../../api/encrypt';
 import { Console } from '../console/Console';
 import { VideoView } from '../video/VideoView';
+import { NavBar } from '../nav/NavBar';
+
+const decodeRole = (token: string): Role => {
+  try {
+    const payload = JSON.parse(atob((token.split('.')[1] ?? '').replace(/-/g, '+').replace(/_/g, '/'))) as JwtClaims;
+    return payload.role;
+  } catch {
+    return 'viewer';
+  }
+};
 
 export const MainScreen = ({ token, onLogout }: { token: string; onLogout: () => void }): JSX.Element => {
   const [lines, setLines] = useState<readonly ConsoleLine[]>([]);
+  const [videoRunning, setVideoRunning] = useState(true);
   const add = (line: ConsoleLine): void => setLines((prev) => appendLine(prev, line));
   const socketRef = useRef<{ send(command: import('@vss/shared').Command): void; sendEncrypted(payloadBase64: string): void; close(): void } | null>(null);
   const encryptRef = useRef<((plaintext: string) => Promise<string>) | null>(null);
 
   useEffect(() => {
     const socket = openControlSocket(token, {
-      onResponse: (ok, text) => {
-        add(serverResponse(ok, text));
-        if (ok && text.toLowerCase().includes('logout')) onLogout();
-      },
+      onResponse: (ok, text) => add(serverResponse(ok, text)),
       onConnectionError: (text) => add(connectionError(text)),
     });
     socketRef.current = socket;
@@ -35,6 +43,11 @@ export const MainScreen = ({ token, onLogout }: { token: string; onLogout: () =>
     if (parsed.kind === 'err') return add(serverResponse(false, parsed.error));
     add(outgoing(parsed.value));
 
+    if (parsed.value === 'LOGOUT') return handleLogout();
+
+    if (parsed.value === 'START_VIDEO') setVideoRunning(true);
+    else if (parsed.value === 'STOP_VIDEO') setVideoRunning(false);
+
     const socket = socketRef.current;
     const encrypt = encryptRef.current;
 
@@ -49,11 +62,30 @@ export const MainScreen = ({ token, onLogout }: { token: string; onLogout: () =>
     }
   };
 
+  const handleLogout = (): void => {
+    // One teardown path for both the navbar button and the console LOGOUT command:
+    // stop video locally, revoke server-side, close the socket, force re-auth.
+    setVideoRunning(false);
+    socketRef.current?.send('LOGOUT');
+    socketRef.current?.close();
+    onLogout();
+  };
+
   return (
-    <main aria-labelledby="main-heading">
-      <h1 id="main-heading">Live Surveillance</h1>
-      <VideoView token={token} />
-      <Console lines={lines} onSubmit={handleSubmit} />
-    </main>
+    <div className="app">
+      <NavBar links={[{ label: 'Docs', to: '/docs' }]} onLogout={handleLogout} />
+      <main className="app-main main-screen" aria-labelledby="main-heading">
+        <h1 id="main-heading" className="main-screen__title">Live Surveillance</h1>
+        <div className="main-grid">
+          <section className="stage card" aria-label="Video stage">
+            <div className="stage__bar"><span className="stage__dot" /> Live camera</div>
+            {videoRunning
+              ? <VideoView token={token} />
+              : <div className="stage__stopped">Video stopped</div>}
+          </section>
+          <Console lines={lines} role={decodeRole(token)} onSubmit={handleSubmit} />
+        </div>
+      </main>
+    </div>
   );
 };

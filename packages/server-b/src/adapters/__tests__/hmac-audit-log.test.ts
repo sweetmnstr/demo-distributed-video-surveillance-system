@@ -13,9 +13,18 @@ describe('hmac-audit-log', () => {
     expect(raw).toContain('STOP_VIDEO');
   });
 
-  it('does not throw when the underlying append fails', async () => {
-    // Point at a path whose parent does not exist; appendEntry returns err and is discarded.
-    // On Windows, use a clearly invalid path like Z:\no\commands.log.
+  it('warns and does not throw when the underlying append fails', async () => {
+    const warnings: string[] = [];
+    const audit = createHmacAuditLog(join('Z:', 'no', 'commands.log'), 'secret', {
+      warn: (m: string) => warnings.push(m),
+    });
+    await expect(audit.append('admin', 'X')).resolves.toBeUndefined();
+    expect(warnings.length).toBe(1);
+    expect(warnings[0]).toMatch(/audit/i);
+  });
+
+  it('silently ignores failures when no logger is provided (default no-op warn)', async () => {
+    // Exercises the SILENT.warn no-op: error path reached without an injected logger.
     const audit = createHmacAuditLog(join('Z:', 'no', 'commands.log'), 'secret');
     await expect(audit.append('admin', 'X')).resolves.toBeUndefined();
   });
