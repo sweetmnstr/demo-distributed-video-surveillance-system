@@ -4,19 +4,6 @@ A TypeScript/Node.js prototype: an RTSP camera simulator, a video server (Server
 an auth & management server (Server B), and a React web client. See `SOLUTION.md`
 for architectural decisions.
 
-## Prerequisites
-
-- Node.js 20+
-- Redis (local installation or WSL2)
-
-## Setup
-
-```bash
-npm install
-node scripts/setup-keys.mjs                  # RSA key pair -> config/keys/
-npm run seed:users --workspace @vss/server-b # demo users -> config/users.json
-```
-
 ## Demo users
 
 | Login    | Password     | Role     |
@@ -27,73 +14,65 @@ npm run seed:users --workspace @vss/server-b # demo users -> config/users.json
 
 `operator` may START/STOP the video; `viewer` may only GET_STATUS.
 
-## Run (Native on Windows 11)
+## Run
 
-This is the primary way to run the system locally on Windows 11:
-
-**Fast path — one command from the repo root:**
-
-```bash
-npm run start
-```
-
-This builds every workspace and launches Server A, the camera simulator, Server B, and
-the web client together (via `concurrently`). Prefer the per-terminal steps below when
-you want to start, stop, or read the logs of services individually.
-
-1. **Install Redis:**
-   - Windows: [Download Redis MSI](https://github.com/microsoftarchive/redis/releases) or use WSL2 with `apt-get install redis-server`
-   - Start Redis: `redis-server` (or use Windows Service if installed)
+1. **Install Node.js 20+** and Redis (local install or WSL2 `apt-get install redis-server`).
 
 2. **Install dependencies:**
    ```bash
    npm install
    ```
 
-3. **Generate RSA keys:**
+3. **Generate the RS256 key pair:**
    ```bash
    node scripts/setup-keys.mjs
    ```
-   This creates `config/keys/private.pem` and `config/keys/public.pem`.
+   Creates `config/keys/private.pem` and `config/keys/public.pem`.
 
 4. **Seed demo users:**
    ```bash
    npm run seed:users --workspace @vss/server-b
    ```
-   This creates `config/users.json` with demo accounts.
+   Creates `config/users.json` with demo accounts.
 
-5. **Start each workspace** (in separate terminal windows). Server A owns the RTSP
-   listening socket, so start it before the camera; if you start them in another
-   order they will simply reconnect with backoff until both are up.
+5. **Start the whole stack from the repository root:**
    ```bash
-   # Terminal 1 - Server A (Video server: RTSP listener on 127.0.0.1:1111, WebSocket on 127.0.0.1:2222)
-   npm run start --workspace @vss/server-a
-
-   # Terminal 2 - Camera simulator (pushes RTSP to 127.0.0.1:1111)
-   npm run start --workspace @vss/camera-sim
-
-   # Terminal 3 - Server B (Auth & control, HTTP on 127.0.0.1:3000, WebSocket on 127.0.0.1:3002)
-   npm run start --workspace @vss/server-b
-
-   # Terminal 4 - Web Client (dev server on 127.0.0.1:5173)
-   npm run dev --workspace @vss/web-client
+   npm run start
    ```
+   Builds every workspace and launches Server A, the camera simulator, Server B, and
+   the web client together via `concurrently`.
 
-   The camera loops `test.mp4` by default (re-encoded to baseline H.264). Point it
-   at another file with `CAMERA_SOURCE=/abs/path/to/video.mp4`.
+6. Open **http://127.0.0.1:5173** and log in with a demo account (e.g. `operator` / `operator123`).
 
-   Each service logs structured lines (`<timestamp> [component] LEVEL message`) so
-   you can follow startup, camera/stream state, viewer connects, and commands.
+<details>
+<summary>Alternative: start services in separate terminals</summary>
 
-6. **Access the web client:**
-   - Open http://127.0.0.1:5173 in your browser
-   - Login with any demo user from the table above
+Server A owns the RTSP listening socket — start it first; the camera and Server B will
+reconnect with backoff if started in any order.
+
+```bash
+# Terminal 1 — Server A (RTSP listener :1111, WebSocket :2222)
+npm run start --workspace @vss/server-a
+
+# Terminal 2 — Camera simulator (pushes RTSP to 127.0.0.1:1111)
+npm run start --workspace @vss/camera-sim
+
+# Terminal 3 — Server B (HTTP :3000, WebSocket :3002)
+npm run start --workspace @vss/server-b
+
+# Terminal 4 — Web client (dev server :5173)
+npm run dev --workspace @vss/web-client
+```
+
+The camera loops `test.mp4` by default. Point it at another file with
+`CAMERA_SOURCE=/abs/path/to/video.mp4`.
+
+</details>
 
 ## Test
 
 ```bash
 npm test                              # all unit + integration suites (100% gate)
-npm run test:e2e --workspace @vss/e2e # Playwright critical flows (stack must be up)
 ```
 
 ## Native crypto addon (Bonus C)
