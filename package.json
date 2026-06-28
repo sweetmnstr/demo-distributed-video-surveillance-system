@@ -1,16 +1,25 @@
 {
   "name": "video-surveillance-system",
   "private": true,
-  "workspaces": ["packages/*", "apps/*", "e2e"],
-  "engines": { "node": ">=20" },
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "e2e"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
+    "start": "npm run build && npm run start:services",
+    "start:services": "concurrently -k -n server-a,camera,server-b,web -c green,yellow,cyan,magenta \"npm run start -w @vss/server-a\" \"npm run start -w @vss/camera-sim\" \"npm run start -w @vss/server-b\" \"npm run dev -w @vss/web-client\"",
     "lint": "tsc --build --noEmit"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
     "@types/node": "^20.14.0",
+    "concurrently": "^10.0.3",
     "ioredis-mock": "^8",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.0",

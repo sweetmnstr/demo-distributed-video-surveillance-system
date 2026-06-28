@@ -515,8 +515,9 @@
     "node_gyp": "C:\\Program Files\\nodejs\\node_modules\\npm\\node_modules\\node-gyp\\bin\\node-gyp.js",
     "npm_version": "11.16.0",
     "prefix": "C:\\Users\\Sweetmnstr\\AppData\\Roaming\\npm",
+    "save_dev": "true",
     "userconfig": "C:\\Users\\Sweetmnstr\\.npmrc",
-    "user_agent": "npm/11.16.0 node/v24.18.0 win32 x64 workspaces/true"
+    "user_agent": "npm/11.16.0 node/v24.18.0 win32 x64 workspaces/false"
   },
   "target_defaults": {
     "include_dirs": [],

@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import ffmpegPath from 'ffmpeg-static';
 import { createLogger } from '@vss/shared';
 import { buildFfmpegArgs } from './ffmpeg-args';
+import { resolveFontPath } from './font';
 import { startSupervisor } from './supervisor';
 import { createRealRunner } from './real-runner';
 
@@ -15,12 +16,13 @@ const log = createLogger('camera-sim');
 const main = (): void => {
   if (!ffmpegPath) throw new Error('ffmpeg-static did not provide a binary path');
   if (!existsSync(SOURCE)) throw new Error(`camera source file not found: ${SOURCE}`);
-  log.info(`looping ${SOURCE} -> ${RTSP_URL}`);
+  const fontPath = resolveFontPath(process.env.CAMERA_FONT ? { env: process.env.CAMERA_FONT } : {});
+  log.info(`looping ${SOURCE} -> ${RTSP_URL} (font: ${fontPath})`);
   const stop = startSupervisor(
     createRealRunner(),
     ffmpegPath,
-    buildFfmpegArgs(SOURCE, RTSP_URL),
-    { baseMs: 1000, capMs: 30000 },
+    buildFfmpegArgs(SOURCE, RTSP_URL, fontPath),
+    { baseMs: 1000, capMs: 30000, stableMs: 10000 },
     log,
   );
   process.on('SIGINT', () => { stop(); process.exit(0); });

@@ -7,6 +7,7 @@ import type { TokenIssuer } from '../../ports/token-issuer';
 import type { SessionStore } from '../../ports/session-store';
 import type { IdGenerator } from '../../ports/id-generator';
 import type { TokenVerifier } from '../../ports/token-verifier';
+import type { AuditLog } from '../../ports/audit-log';
 import type { CommandCipher } from '@vss/shared';
 import type { LoginUserDeps } from '../../use-cases/login-user';
 
@@ -55,6 +56,9 @@ const fakeCipher = {
   decrypt: async (_cipher: string) => '',
 } as unknown as CommandCipher;
 
+/** No-op audit used by helpers that do not need to inspect audit entries. */
+const noopAudit: AuditLog = { append: async () => undefined };
+
 // ---------------------------------------------------------------------------
 // Helper: build the server with working loginDeps for the happy-path tests
 // ---------------------------------------------------------------------------
@@ -69,7 +73,7 @@ async function buildWithWorkingLoginDeps() {
     ids: fakeIds,
     ttlSeconds: 3600,
   };
-  return buildHttpServer({ loginDeps, verifier: fakeVerifier, cipher: fakeCipher });
+  return buildHttpServer({ loginDeps, verifier: fakeVerifier, cipher: fakeCipher, audit: noopAudit });
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +91,7 @@ async function buildWithBadCredsLoginDeps() {
     ids: fakeIds,
     ttlSeconds: 3600,
   };
-  return buildHttpServer({ loginDeps, verifier: fakeVerifier, cipher: fakeCipher });
+  return buildHttpServer({ loginDeps, verifier: fakeVerifier, cipher: fakeCipher, audit: noopAudit });
 }
 
 // ---------------------------------------------------------------------------
@@ -182,5 +186,52 @@ describe('buildHttpServer — GET /publicKey', () => {
     const res = await app.inject({ method: 'GET', url: '/publicKey' });
     expect(res.statusCode).toBe(200);
     expect(res.body).toBe('PEM');
+  });
+});
+
+describe('buildHttpServer — audit log', () => {
+  it('appends LOGIN ok=true on success and LOGIN ok=false on failure, never logging the password', async () => {
+    const entries: Array<{ user: string; message: string }> = [];
+    const audit: AuditLog = { append: async (user, message) => { entries.push({ user, message }); } };
+
+    const users = await buildUserRepo('admin', GOOD_PASSWORD);
+    const loginDeps: LoginUserDeps = {
+      users,
+      hasher: createBcryptHasher(),
+      issuer: fakeIssuer,
+      sessions: fakeSessionStore,
+      ids: fakeIds,
+      ttlSeconds: 3600,
+    };
+    const app = buildHttpServer({ loginDeps, verifier: fakeVerifier, cipher: fakeCipher, audit });
+
+    await app.inject({ method: 'POST', url: '/auth/login', payload: { login: 'admin', password: GOOD_PASSWORD } });
+    await app.inject({ method: 'POST', url: '/auth/login', payload: { login: 'admin', password: 'wrong-password' } });
+
+    expect(entries).toContainEqual({ user: 'admin', message: 'LOGIN admin ok=true' });
+    expect(entries).toContainEqual({ user: 'admin', message: 'LOGIN admin ok=false' });
+    // Password must never appear in the audit log.
+    expect(JSON.stringify(entries)).not.toContain(GOOD_PASSWORD);
+    expect(JSON.stringify(entries)).not.toContain('wrong-password');
+  });
+
+  it('does not append an audit entry for malformed-body 400 responses (no identity present)', async () => {
+    const entries: Array<{ user: string; message: string }> = [];
+    const audit: AuditLog = { append: async (user, message) => { entries.push({ user, message }); } };
+
+    const users = await buildUserRepo('admin', GOOD_PASSWORD);
+    const loginDeps: LoginUserDeps = {
+      users,
+      hasher: createBcryptHasher(),
+      issuer: fakeIssuer,
+      sessions: fakeSessionStore,
+      ids: fakeIds,
+      ttlSeconds: 3600,
+    };
+    const app = buildHttpServer({ loginDeps, verifier: fakeVerifier, cipher: fakeCipher, audit });
+
+    await app.inject({ method: 'POST', url: '/auth/login', payload: { login: 1, password: 'pw' } });
+
+    expect(entries).toHaveLength(0);
   });
 });

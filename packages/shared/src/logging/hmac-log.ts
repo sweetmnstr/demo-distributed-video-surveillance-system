@@ -1,4 +1,5 @@
-import { appendFile, readFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Result, ok, err, isOk, isErr } from '../result/result';
 
@@ -55,6 +56,7 @@ export const appendEntry = async (
   const hmac = computeHmac(secret, { timestamp, user: input.user, message: input.message, prevHash });
   const entry: LogEntry = { timestamp, user: input.user, message: input.message, prevHash, hmac };
   try {
+    await mkdir(dirname(file), { recursive: true });
     await appendFile(file, JSON.stringify(entry) + '\n', 'utf8');
     return ok(undefined);
   } catch (error) {

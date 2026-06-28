@@ -49,9 +49,16 @@ export const startControlServer = (deps: ControlServerDeps): void => {
 
         if (msg.type === 'auth') {
           const result = await authenticateConnection(msg.token, deps.auth);
-          if (result.kind === 'err') { log.warn('control client auth rejected'); send(socket, { type: 'error', text: 'unauthorized' }); socket.close(1008); return; }
+          if (result.kind === 'err') {
+            log.warn('control client auth rejected');
+            await deps.process.audit.append('unknown', 'AUTH rejected');
+            send(socket, { type: 'error', text: 'unauthorized' });
+            socket.close(1008);
+            return;
+          }
           session = result.value;
           log.info(`control client authenticated: ${session.login} (${session.role})`);
+          await deps.process.audit.append(session.login, `AUTH ${session.login} accepted`);
           return send(socket, { type: 'response', ok: true, text: 'authenticated' });
         }
         if (!session) return send(socket, { type: 'error', text: 'not authenticated' });

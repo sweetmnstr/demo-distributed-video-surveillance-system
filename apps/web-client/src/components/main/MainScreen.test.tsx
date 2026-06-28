@@ -161,28 +161,6 @@ describe('MainScreen', () => {
     expect(await screen.findByText('! CONNECTION: server unreachable')).toBeInTheDocument();
   });
 
-  it('calls onLogout when the server sends an ok response containing "logout"', async () => {
-    const stub = makeSocketStub();
-    const onLogout = jest.fn();
-
-    renderMain({ token: 'tok', onLogout });
-
-    act(() => stub._onResponse(true, 'LOGOUT acknowledged'));
-
-    expect(onLogout).toHaveBeenCalled();
-  });
-
-  it('does not call onLogout when the server replies with ok=false even if text contains "logout"', async () => {
-    const stub = makeSocketStub();
-    const onLogout = jest.fn();
-
-    renderMain({ token: 'tok', onLogout });
-
-    act(() => stub._onResponse(false, 'logout not allowed'));
-
-    expect(onLogout).not.toHaveBeenCalled();
-  });
-
   it('closes the socket on unmount', () => {
     makeSocketStub();
 
@@ -310,5 +288,22 @@ describe('MainScreen', () => {
 
     expect(stub.send).toHaveBeenCalledWith('LOGOUT');
     expect(onLogout).toHaveBeenCalledTimes(1);
+  });
+
+  it('logging out from the command dropdown tears down like the button', async () => {
+    const stub = makeSocketStub();
+    (parseCommand as jest.Mock).mockReturnValue({ kind: 'ok', value: 'LOGOUT' });
+    const onLogout = jest.fn();
+
+    renderMain({ token: 'tok', onLogout });
+
+    const select = screen.getByLabelText('command');
+    await userEvent.selectOptions(select, 'LOGOUT');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(stub.send).toHaveBeenCalledWith('LOGOUT');
+    expect(stub.close).toHaveBeenCalled();
+    expect(onLogout).toHaveBeenCalled();
+    expect(screen.queryByTestId('video-view')).not.toBeInTheDocument();
   });
 });

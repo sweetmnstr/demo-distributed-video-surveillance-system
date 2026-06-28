@@ -1,3 +1,4 @@
+import { isAbsolute, resolve } from 'node:path';
 import { loadServerBConfig } from '../config';
 
 const validEnv = {
@@ -13,6 +14,9 @@ const validEnv = {
   JWT_TTL_SECONDS: '3600',
 };
 
+// __dirname here is packages/server-b/src/__tests__; repo root is 4 levels up
+const REPO_ROOT = resolve(__dirname, '../../../..');
+
 describe('loadServerBConfig', () => {
   it('parses a complete env into typed config', () => {
     const cfg = loadServerBConfig(validEnv);
@@ -26,6 +30,22 @@ describe('loadServerBConfig', () => {
   });
   it('throws when a numeric variable is not a number', () => {
     expect(() => loadServerBConfig({ ...validEnv, HTTP_PORT: 'abc' })).toThrow();
+  });
+});
+
+describe('loadServerBConfig — path resolution', () => {
+  it('resolves a relative commandsLogPath against the repo root, not cwd', () => {
+    const cfg = loadServerBConfig({ ...validEnv, COMMANDS_LOG_PATH: 'config/commands.log' });
+    const expected = resolve(REPO_ROOT, 'config/commands.log');
+    expect(cfg.commandsLogPath).toBe(expected);
+  });
+
+  it('passes an absolute commandsLogPath through unchanged', () => {
+    // Construct a platform-safe absolute path from __dirname so it is
+    // genuinely absolute on both Windows and POSIX.
+    const absPath = resolve(__dirname, 'absolute-commands.log');
+    const cfg = loadServerBConfig({ ...validEnv, COMMANDS_LOG_PATH: absPath });
+    expect(cfg.commandsLogPath).toBe(absPath);
   });
 });
 

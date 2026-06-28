@@ -142,9 +142,29 @@ npm run dev   --workspace @vss/web-client`}
     </section>
 
     <section className="docs__section">
+      <h2>Run with Docker (Windows)</h2>
+      <ol>
+        <li>
+          Install Docker Desktop with the WSL2 backend enabled (Settings &rarr; General &rarr;
+          &ldquo;Use the WSL 2 based engine&rdquo;).
+        </li>
+        <li>
+          Start the full stack with one command:
+          <pre><code>.\scripts\docker-up.ps1</code></pre>
+        </li>
+        <li>
+          Open the web client at <code>http://127.0.0.1:8080</code>.
+        </li>
+      </ol>
+    </section>
+
+    <section className="docs__section">
       <h2>Limitations</h2>
       <ul>
-        <li>Windows containers are not used; Linux compose for dev/orchestration.</li>
+        <li>
+          Linux containers run on Windows 11 via Docker Desktop + WSL2; native Windows containers
+          are intentionally not used (ffmpeg, Redis, and nginx lack reliable Windows-container images).
+        </li>
         <li>Bonus D TPM uses software emulation in the container.</li>
         <li>A&harr;B commands are rejected (not queued) while the link is down.</li>
       </ul>

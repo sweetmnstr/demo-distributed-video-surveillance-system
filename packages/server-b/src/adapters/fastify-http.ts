@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import { CommandCipher, LoginRequest, createLogger } from '@vss/shared';
 import { loginUser, LoginUserDeps } from '../use-cases/login-user';
 import { TokenVerifier } from '../ports/token-verifier';
+import { AuditLog } from '../ports/audit-log';
 
 const log = createLogger('server-b');
 
@@ -10,6 +11,7 @@ export interface HttpDeps {
   readonly loginDeps: LoginUserDeps;
   readonly verifier: TokenVerifier;
   readonly cipher: CommandCipher;
+  readonly audit: AuditLog;
 }
 
 export const buildHttpServer = (deps: HttpDeps): FastifyInstance => {
@@ -25,9 +27,11 @@ export const buildHttpServer = (deps: HttpDeps): FastifyInstance => {
     const result = await loginUser(body.data, deps.loginDeps);
     if (result.kind === 'err') {
       log.warn(`login failed for "${body.data.login}": ${result.error}`);
+      await deps.audit.append(body.data.login, `LOGIN ${body.data.login} ok=false`);
       return reply.code(401).send({ error: result.error });
     }
     log.info(`login succeeded for "${body.data.login}"`);
+    await deps.audit.append(body.data.login, `LOGIN ${body.data.login} ok=true`);
     return reply.send({ token: result.value.token });
   });
 

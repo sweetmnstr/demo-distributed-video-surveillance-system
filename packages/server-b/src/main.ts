@@ -43,7 +43,7 @@ const main = async (): Promise<void> => {
   const issuer = await createJoseTokenIssuer(cfg.privateKeyPath, cfg.jwtTtlSeconds);
   const verifier = await createJoseTokenVerifier(cfg.publicKeyPath);
   const sessions = createRedisSessionStore(cfg.redisUrl);
-  const audit = createHmacAuditLog(cfg.commandsLogPath, cfg.hmacSecret);
+  const audit = createHmacAuditLog(cfg.commandsLogPath, cfg.hmacSecret, log);
   const ids = createUuidIdGenerator();
 
   const interServerWss = new WebSocketServer({ port: cfg.interServerWsPort });
@@ -55,6 +55,7 @@ const main = async (): Promise<void> => {
     loginDeps: { users, hasher, issuer, sessions, ids, ttlSeconds: cfg.jwtTtlSeconds },
     verifier,
     cipher,
+    audit,
   });
   await http.listen({ port: cfg.httpPort, host: '0.0.0.0' });
   log.info(`HTTP on :${cfg.httpPort}, inter-server WS on :${cfg.interServerWsPort}, control WS on :${cfg.controlWsPort} (cipher=${cfg.cipherImpl})`);

@@ -81,6 +81,22 @@ describe('DocsPage', () => {
     expect(screen.getByRole('heading', { level: 2, name: /^limitations$/i })).toBeInTheDocument();
   });
 
+  it('renders the reworded limitations bullet about Linux containers via Docker Desktop + WSL2', () => {
+    expect(screen.getByText(/linux containers run on windows 11 via docker desktop \+ wsl2/i)).toBeInTheDocument();
+  });
+
+  it('renders the Run with Docker (Windows) section heading', () => {
+    expect(screen.getByRole('heading', { level: 2, name: /^run with docker \(windows\)$/i })).toBeInTheDocument();
+  });
+
+  it('renders the docker-up script reference', () => {
+    expect(screen.getByText(/docker-up\.ps1/i)).toBeInTheDocument();
+  });
+
+  it('renders the web client URL for the Docker setup', () => {
+    expect(screen.getByText(/127\.0\.0\.1:8080/)).toBeInTheDocument();
+  });
+
   it('renders the main landmark element', () => {
     expect(screen.getByRole('main')).toBeInTheDocument();
   });

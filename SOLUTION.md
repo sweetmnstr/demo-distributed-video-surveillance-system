@@ -46,9 +46,27 @@ Pure use-cases driven through ports, unit-tested to 100% with mocked ports; IO
 adapters verified by integration tests (in-process `ws`, `ffmpeg-static`) and
 Playwright E2E against the compose stack.
 
+## Camera overlay font — bundled DejaVuSans
+The camera simulator overlays a timestamp on the RTSP stream via ffmpeg's
+`drawtext` filter. To keep the image self-contained and avoid relying on the
+host OS, **DejaVuSans.ttf v2.37** is shipped at
+`packages/camera-sim/assets/DejaVuSans.ttf`. The font is released under the
+permissive Bitstream Vera / Arev license (free redistribution permitted); see
+`packages/camera-sim/assets/LICENSE-DejaVuSans.txt`.
+
+`resolveFontPath()` in `font.ts` uses precedence **env override → bundled font →
+Windows Arial fallback**. Now that the bundled font is present, the Arial
+fallback is never reached on a clean checkout.
+
+Source: https://sourceforge.net/projects/dejavu/files/dejavu/2.37/dejavu-fonts-ttf-2.37.tar.bz2/download
+
 ## Limitations
-- Windows containers are not used; dev/orchestration runs on Linux containers.
-  Native Windows 11 run is documented in the README.
+- **Linux containers on Windows via Docker Desktop + WSL2** — this is a deliberate
+  architectural choice. Native Windows containers were rejected because ffmpeg, Redis,
+  and nginx have poor or no Windows-container support and would produce multi-GB,
+  likely non-functional images. Docker Desktop's WSL2 backend runs the existing Linux
+  images unchanged on Windows 11; the native (no-Docker) Windows run path is also
+  documented in the README.
 - Bonus D real TPM (Windows PCP/CNG) does not run in a Linux container; container
   delivery uses software emulation behind the `CommandCipher` port.
 - A↔B commands are rejected (not queued) while the inter-server channel is down.
@@ -58,7 +76,9 @@ RSA-OAEP runs in C++ via `Napi::AsyncWorker` (off the event loop) using Node's
 bundled OpenSSL headers — no external OpenSSL install. The JS wrapper is unit
 -tested to 100% with a mock addon; the compiled binary is verified by a round
 -trip integration test. C++-level unit tests were left optional given the small
-surface and the integration coverage.
+surface and the integration coverage. In Docker, the `server-b` image installs a
+C/C++ toolchain (`python3`, `make`, `g++`) and compiles the addon during the build,
+so `CIPHER_IMPL=native` runs inside the Linux container too.
 
 ## Bonus D — TPM
 A `TpmDevice` port models a sealed key: decryption runs inside the device and the

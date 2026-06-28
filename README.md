@@ -86,15 +86,55 @@ npm test                              # all unit + integration suites (100% gate
 npm run test:e2e --workspace @vss/e2e # Playwright critical flows (stack must be up)
 ```
 
-## Optional: Run with Docker Compose
+## Run with Docker on Windows 11
 
-If you prefer an orchestrated containerized setup:
+The stack ships as **Linux container images** (Node 20, nginx, Redis) and runs on
+Windows 11 via Docker Desktop with the WSL2 backend — no image changes required.
+
+**Prerequisite:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+installed and set to Linux-container mode (the default with the WSL2 backend). Confirm
+with `docker info | findstr OSType` — the output should be `OSType: linux`.
+
+### Recommended: one-command path
+
+```powershell
+.\scripts\docker-up.ps1
+```
+
+This script:
+1. Generates `config/keys/private.pem` and `config/keys/public.pem` if they are missing.
+2. Seeds `config/users.json` with the demo users (same table as above).
+3. Runs `docker compose up --build -d` and prints the service URLs.
+
+To stop the stack:
+
+```powershell
+.\scripts\docker-down.ps1           # stop containers, keep volumes
+.\scripts\docker-down.ps1 -Volumes  # stop containers and remove volumes
+```
+
+### Manual path
+
+If you prefer to drive compose directly, prepare the host config first (the
+`./config` directory is bind-mounted into the containers):
+
+```bash
+node scripts/setup-keys.mjs                  # RSA key pair -> config/keys/
+npm run seed:users --workspace @vss/server-b # demo users  -> config/users.json
+```
+
+Then bring the stack up:
 
 ```bash
 docker compose up --build -d
-# Web client:   http://127.0.0.1:8080
-# Server B API: http://127.0.0.1:3000  (/auth/login, /protected, /publicKey)
 ```
+
+### URLs
+
+| Service       | URL                                                         |
+|---------------|-------------------------------------------------------------|
+| Web client    | http://127.0.0.1:8080                                       |
+| Server B API  | http://127.0.0.1:3000 (`/auth/login`, `/protected`, `/publicKey`) |
 
 ## Native crypto addon (Bonus C)
 
@@ -106,6 +146,10 @@ Building it requires a C/C++ toolchain:
 
 Enable it with `CIPHER_IMPL=native`. The addon generates its own key pair at
 startup; `/publicKey` then serves the addon's public key.
+
+In Docker, the `server-b` image installs the toolchain (`python3`, `make`, `g++`)
+and compiles the addon during the build, so `CIPHER_IMPL=native` works inside the
+container as well — no extra host setup required.
 
 ## TPM-backed cipher (Bonus D)
 

@@ -1,0 +1,27 @@
+# Exclude build/dev artifacts to speed up Windows (Docker Desktop + WSL2) builds.
+# Conservative: does NOT exclude source files, package.json, package-lock.json,
+# tsconfig files, jest.config.base.js, or anything the Dockerfiles COPY in.
+
+node_modules
+**/node_modules
+
+**/dist
+
+# Stale TypeScript incremental build caches. These MUST be excluded alongside
+# dist: a copied-in .tsbuildinfo makes the `composite` build think it is already
+# up to date and skip emitting declarations, breaking @vss/shared's types in the
+# container. Excluding both forces a clean from-source build.
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+config/keys
+
+.git
+
+coverage
+**/coverage
+
+*.log
+**/*.log
+
+.env

@@ -25,10 +25,7 @@ export const MainScreen = ({ token, onLogout }: { token: string; onLogout: () =>
 
   useEffect(() => {
     const socket = openControlSocket(token, {
-      onResponse: (ok, text) => {
-        add(serverResponse(ok, text));
-        if (ok && text.toLowerCase().includes('logout')) onLogout();
-      },
+      onResponse: (ok, text) => add(serverResponse(ok, text)),
       onConnectionError: (text) => add(connectionError(text)),
     });
     socketRef.current = socket;
@@ -45,6 +42,8 @@ export const MainScreen = ({ token, onLogout }: { token: string; onLogout: () =>
     const parsed = parseCommand(raw);
     if (parsed.kind === 'err') return add(serverResponse(false, parsed.error));
     add(outgoing(parsed.value));
+
+    if (parsed.value === 'LOGOUT') return handleLogout();
 
     if (parsed.value === 'START_VIDEO') setVideoRunning(true);
     else if (parsed.value === 'STOP_VIDEO') setVideoRunning(false);
@@ -64,8 +63,11 @@ export const MainScreen = ({ token, onLogout }: { token: string; onLogout: () =>
   };
 
   const handleLogout = (): void => {
-    // Best-effort server-side revocation, then clear local state regardless.
+    // One teardown path for both the navbar button and the console LOGOUT command:
+    // stop video locally, revoke server-side, close the socket, force re-auth.
+    setVideoRunning(false);
     socketRef.current?.send('LOGOUT');
+    socketRef.current?.close();
     onLogout();
   };
 
