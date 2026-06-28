@@ -1,59 +1,10 @@
 // Unit tests for routes/DocsPage.tsx
-// Verifies all section headings present in the current implementation,
-// plus the Architecture (Mermaid), Setup Instructions, and Architectural
-// Decisions sections added in Task 19.
+// The page renders a static architecture image (served from public/docs/),
+// documents `npm run start` as the entrypoint, and contains no Docker content.
 
-const mockMermaid = {
-  initialize: jest.fn(),
-  render: jest.fn().mockResolvedValue({ svg: '<svg data-mocked="true"/>' }),
-};
-
-jest.mock('mermaid', () => mockMermaid);
-
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import mermaid from 'mermaid';
-import { DocsPage, runMermaidEffect } from './DocsPage';
-
-// mermaid.initialize is called once at module import time (I1 fix).
-// The mock is set up before import, so the call count starts at 1.
-afterEach(() => jest.clearAllMocks());
-
-describe('runMermaidEffect', () => {
-  it('skips render when el is null', () => {
-    runMermaidEffect(null);
-
-    expect(mermaid.render).not.toHaveBeenCalled();
-  });
-
-  it('calls mermaid.render and sets innerHTML when el is provided', async () => {
-    const el = document.createElement('div');
-
-    runMermaidEffect(el);
-
-    await waitFor(() => {
-      expect(mermaid.render).toHaveBeenCalledWith('vss-diagram', expect.stringContaining('flowchart'));
-      expect(el.innerHTML).toContain('<svg');
-    });
-  });
-
-  it('logs an error and does not throw when mermaid.render rejects', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    const renderError = new Error('mermaid render failed');
-    (mermaid.render as jest.Mock).mockRejectedValueOnce(renderError);
-
-    const el = document.createElement('div');
-    runMermaidEffect(el);
-
-    await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[DocsPage] mermaid.render failed:',
-        renderError,
-      );
-    });
-    consoleSpy.mockRestore();
-  });
-});
+import { DocsPage } from './DocsPage';
 
 describe('DocsPage', () => {
   beforeEach(() => {
@@ -61,7 +12,6 @@ describe('DocsPage', () => {
   });
 
   it('shows a navbar link back to the live view', () => {
-    // beforeEach has already rendered; no second render needed.
     expect(screen.getByRole('link', { name: 'Live' })).toHaveAttribute('href', '/');
   });
 
@@ -77,51 +27,40 @@ describe('DocsPage', () => {
     expect(screen.getByRole('heading', { level: 2, name: /^technologies$/i })).toBeInTheDocument();
   });
 
+  it('renders the Architecture section heading', () => {
+    expect(screen.getByRole('heading', { level: 2, name: /^architecture$/i })).toBeInTheDocument();
+  });
+
+  it('renders the Setup Instructions section heading', () => {
+    expect(screen.getByRole('heading', { level: 2, name: /^setup instructions$/i })).toBeInTheDocument();
+  });
+
+  it('renders the Architectural Decisions section heading', () => {
+    expect(screen.getByRole('heading', { level: 2, name: /^architectural decisions$/i })).toBeInTheDocument();
+  });
+
   it('renders the Limitations section heading', () => {
     expect(screen.getByRole('heading', { level: 2, name: /^limitations$/i })).toBeInTheDocument();
-  });
-
-  it('renders the reworded limitations bullet about Linux containers via Docker Desktop + WSL2', () => {
-    expect(screen.getByText(/linux containers run on windows 11 via docker desktop \+ wsl2/i)).toBeInTheDocument();
-  });
-
-  it('renders the Run with Docker (Windows) section heading', () => {
-    expect(screen.getByRole('heading', { level: 2, name: /^run with docker \(windows\)$/i })).toBeInTheDocument();
-  });
-
-  it('renders the docker-up script reference', () => {
-    expect(screen.getByText(/docker-up\.ps1/i)).toBeInTheDocument();
-  });
-
-  it('renders the web client URL for the Docker setup', () => {
-    expect(screen.getByText(/127\.0\.0\.1:8080/)).toBeInTheDocument();
   });
 
   it('renders the main landmark element', () => {
     expect(screen.getByRole('main')).toBeInTheDocument();
   });
 
-  // Task 19 assertions — new sections
-  it('renders the Architecture section heading', () => {
-    expect(screen.getByRole('heading', { name: /^architecture$/i })).toBeInTheDocument();
-  });
-
-  it('renders the architecture diagram container', () => {
+  it('renders the architecture diagram figure', () => {
     expect(screen.getByTestId('architecture-diagram')).toBeInTheDocument();
   });
 
-  it('renders the Setup Instructions section heading', () => {
-    expect(screen.getByRole('heading', { name: /^setup instructions$/i })).toBeInTheDocument();
+  it('renders the architecture image with the public PNG path and descriptive alt text', () => {
+    const img = screen.getByRole('img', { name: /system architecture/i });
+    expect(img).toHaveAttribute('src', '/docs/architecture.png');
   });
 
-  it('renders the Architectural Decisions section heading', () => {
-    expect(screen.getByRole('heading', { name: /^architectural decisions$/i })).toBeInTheDocument();
+  it('documents `npm run start` as the entrypoint in Setup Instructions', () => {
+    expect(screen.getByText(/npm run start/i)).toBeInTheDocument();
   });
 
-  it('injects mermaid SVG into the diagram container after render', async () => {
-    await waitFor(() => {
-      const container = screen.getByTestId('architecture-diagram');
-      expect(container.innerHTML).toContain('<svg');
-    });
+  it('does not mention Docker anywhere on the page', () => {
+    expect(screen.queryByText(/docker/i)).not.toBeInTheDocument();
   });
 });

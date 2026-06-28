@@ -246,7 +246,7 @@
 }
 
 /* ---------- Docs page ---------- */
-.docs { max-width: var(--maxw-prose); }
+.docs { max-width: var(--maxw-docs); }
 .docs__title { font-size: var(--fs-h1); margin-bottom: var(--space-4); }
 .docs__title-accent { color: var(--c-primary); }
 .docs__section {
@@ -285,10 +285,23 @@
 .docs__section pre code { background: none; color: inherit; padding: 0; }
 .docs__section dt { font-family: var(--font-head); font-weight: 700; color: var(--c-heading); margin-top: var(--space-3); }
 .docs__section dd { margin: 0.25rem 0 0; }
-.docs__section [data-testid="architecture-diagram"] {
+.docs__figure {
+  margin: 0;
   background: #fff;
   border: 1px solid var(--c-border);
   border-radius: var(--radius);
   padding: var(--space-4);
   overflow-x: auto;
+}
+.docs__figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+.docs__figure figcaption {
+  margin-top: var(--space-3);
+  text-align: center;
+  font-size: 0.85em;
+  color: var(--c-text-muted, #5a636c);
 }

@@ -38,6 +38,7 @@
   --space-6: 4rem;
   --maxw-prose: 70ch;
   --maxw-app: 1180px;
+  --maxw-docs: 84ch;
 
   /* Motion */
   --duration-fast: 150ms;

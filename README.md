@@ -27,9 +27,19 @@ npm run seed:users --workspace @vss/server-b # demo users -> config/users.json
 
 `operator` may START/STOP the video; `viewer` may only GET_STATUS.
 
-## Run (Native on Windows 11, no Docker)
+## Run (Native on Windows 11)
 
 This is the primary way to run the system locally on Windows 11:
+
+**Fast path — one command from the repo root:**
+
+```bash
+npm run start
+```
+
+This builds every workspace and launches Server A, the camera simulator, Server B, and
+the web client together (via `concurrently`). Prefer the per-terminal steps below when
+you want to start, stop, or read the logs of services individually.
 
 1. **Install Redis:**
    - Windows: [Download Redis MSI](https://github.com/microsoftarchive/redis/releases) or use WSL2 with `apt-get install redis-server`
@@ -86,56 +96,6 @@ npm test                              # all unit + integration suites (100% gate
 npm run test:e2e --workspace @vss/e2e # Playwright critical flows (stack must be up)
 ```
 
-## Run with Docker on Windows 11
-
-The stack ships as **Linux container images** (Node 20, nginx, Redis) and runs on
-Windows 11 via Docker Desktop with the WSL2 backend — no image changes required.
-
-**Prerequisite:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-installed and set to Linux-container mode (the default with the WSL2 backend). Confirm
-with `docker info | findstr OSType` — the output should be `OSType: linux`.
-
-### Recommended: one-command path
-
-```powershell
-.\scripts\docker-up.ps1
-```
-
-This script:
-1. Generates `config/keys/private.pem` and `config/keys/public.pem` if they are missing.
-2. Seeds `config/users.json` with the demo users (same table as above).
-3. Runs `docker compose up --build -d` and prints the service URLs.
-
-To stop the stack:
-
-```powershell
-.\scripts\docker-down.ps1           # stop containers, keep volumes
-.\scripts\docker-down.ps1 -Volumes  # stop containers and remove volumes
-```
-
-### Manual path
-
-If you prefer to drive compose directly, prepare the host config first (the
-`./config` directory is bind-mounted into the containers):
-
-```bash
-node scripts/setup-keys.mjs                  # RSA key pair -> config/keys/
-npm run seed:users --workspace @vss/server-b # demo users  -> config/users.json
-```
-
-Then bring the stack up:
-
-```bash
-docker compose up --build -d
-```
-
-### URLs
-
-| Service       | URL                                                         |
-|---------------|-------------------------------------------------------------|
-| Web client    | http://127.0.0.1:8080                                       |
-| Server B API  | http://127.0.0.1:3000 (`/auth/login`, `/protected`, `/publicKey`) |
-
 ## Native crypto addon (Bonus C)
 
 `@vss/native-crypto` is a C++ N-API addon (RSA-OAEP via Node's bundled OpenSSL).
@@ -146,10 +106,6 @@ Building it requires a C/C++ toolchain:
 
 Enable it with `CIPHER_IMPL=native`. The addon generates its own key pair at
 startup; `/publicKey` then serves the addon's public key.
-
-In Docker, the `server-b` image installs the toolchain (`python3`, `make`, `g++`)
-and compiles the addon during the build, so `CIPHER_IMPL=native` works inside the
-container as well — no extra host setup required.
 
 ## Windows TPM cipher backend (Bonus D)
 
@@ -186,6 +142,6 @@ npm run build:native -w @vss/tpm-crypto
 > firmware**. If the TPM is disabled, initialization fails with `NTE_DEVICE_NOT_READY`
 > and the system falls back to the software device automatically (logged as a warning).
 
-On Linux / in Docker the key is sealed in the **software-emulated TPM** device (no
+On non-Windows hosts the key is sealed in the **software-emulated TPM** device (no
 native build required). The private key is never exported — `exportPrivateKey` throws
 and a unit test asserts this invariant.

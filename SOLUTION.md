@@ -61,14 +61,6 @@ fallback is never reached on a clean checkout.
 Source: https://sourceforge.net/projects/dejavu/files/dejavu/2.37/dejavu-fonts-ttf-2.37.tar.bz2/download
 
 ## Limitations
-- **Linux containers on Windows via Docker Desktop + WSL2** — this is a deliberate
-  architectural choice. Native Windows containers were rejected because ffmpeg, Redis,
-  and nginx have poor or no Windows-container support and would produce multi-GB,
-  likely non-functional images. Docker Desktop's WSL2 backend runs the existing Linux
-  images unchanged on Windows 11; the native (no-Docker) Windows run path is also
-  documented in the README.
-- Bonus D real TPM (Windows PCP/CNG) does not run in a Linux container; container
-  delivery uses software emulation behind the `CommandCipher` port.
 - A↔B commands are rejected (not queued) while the inter-server channel is down.
 
 ## Bonus C — native addon
@@ -76,15 +68,13 @@ RSA-OAEP runs in C++ via `Napi::AsyncWorker` (off the event loop) using Node's
 bundled OpenSSL headers — no external OpenSSL install. The JS wrapper is unit
 -tested to 100% with a mock addon; the compiled binary is verified by a round
 -trip integration test. C++-level unit tests were left optional given the small
-surface and the integration coverage. In Docker, the `server-b` image installs a
-C/C++ toolchain (`python3`, `make`, `g++`) and compiles the addon during the build,
-so `CIPHER_IMPL=native` runs inside the Linux container too.
+surface and the integration coverage.
 
 ## Bonus D — TPM
 
 ### TpmDevice port and software device
 A `TpmDevice` port models a sealed key: decryption runs inside the device and the
-private key is non-exportable (enforced and unit-tested). The Linux container uses
+private key is non-exportable (enforced and unit-tested). Non-Windows hosts use
 a software-emulated device behind the same `CommandCipher` port.
 
 ### Native Windows TPM (PCP/CNG)
@@ -107,7 +97,7 @@ auto-skips on non-Windows or when the binary is absent.
 **Platform selection.** `CIPHER_IMPL=tpm` automatically selects the real Windows
 device on `win32`. On non-Windows, or if the TPM addon is unavailable at runtime,
 the system logs a warning and falls back to the software-emulated sealed key
-transparently. CI (Linux) always runs the software path without any configuration
+transparently. CI and non-Windows hosts always run the software path without any configuration
 change.
 
 **Hardware prerequisite.** The hardware round-trip requires TPM 2.0 to be enabled
